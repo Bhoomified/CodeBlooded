@@ -8,11 +8,11 @@ import { loadConfig } from './config-loader.js';
 import { createStore } from './state.js';
 import { initApi } from './api.js';
 import { computeDoySinCos, formatDoy, dayOfYearToMonthDay } from './doy.js';
-import { CHANNELS, channelByKey, DERIVED_CHANNELS, NULL_SHOCK_EPSILON } from './constants.js';
-import { initMap, updateGridDisplay, setShockBox, setBoundaries, resetView } from './map3d.js';
-import { initWind, setWindData, toggleWind } from './wind.js';
+import { CHANNELS, channelByKey, DERIVED_CHANNELS, NULL_SHOCK_EPSILON, DIFFERENCE_RANGES } from './constants.js';
+import { initMap, updateGridDisplay, setShockBox, setBoundaries, resetView, toggleSatellite } from './map3d.js';
+import { initWeatherEffects, updateWeatherState, toggleWindOverlay, toggleWeatherFx, setWeatherShockBox, setWeatherBoundaries } from './weather-effects.js';
 import { buildLandMask, buildStateAssignments, flatIndexStep } from './grid.js';
-import { loadShockPresets, snapToGrid, buildPerturbationTensor, generateRandomJudgeShock } from './shock.js';
+import { loadShockPresets, snapToGrid, buildPerturbationTensor, generateRandomJudgeShock, checkEdgeBandOverlap } from './shock.js';
 import { computeDifference, analyzeCausality } from './analysis.js';
 import { computeBlurMetrics } from './blur.js';
 import { computeImpacts } from './impact.js';
@@ -42,7 +42,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const badge = document.getElementById('badge-mode');
     if (config.mode === 'mock') {
       badge.style.display = 'inline-flex';
-      badge.textContent = 'MOCK ENGINE - NOT MODEL OUTPUT';
+      badge.textContent = 'MOCK ENGINE';
+      badge.title = 'Client-Side Physics Emulator - Not Live Torch Model Output';
     } else {
       badge.style.display = 'none';
     }
@@ -56,8 +57,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     store.set('dayOfYear', 196); // mid-July monsoon
     store.set('doySinCos', computeDoySinCos(196));
     store.set('selectedChannel', 't2m');
-    store.set('viewMode', 'difference'); // default to multiverse difference
-    store.set('isFlat', false);
+    store.set('viewMode', 'normal'); // open on real model output; Difference is blank until a shock is applied
+    store.set('isFlat', true); // default to 2D flat for clear top-down view
     store.set('windEnabled', false);
 
     // Initialize map
@@ -69,9 +70,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       onCellHover: handleCellHover
     });
 
-    // Initialize wind overlay
+    // Initialize wind and atmospheric weather overlay
     const windCanvas = document.getElementById('wind-canvas');
-    initWind(windCanvas, mapInstance);
+    initWeatherEffects(windCanvas, mapInstance);
+    toggleWindOverlay(true);
 
     // Load boundaries & land mask
     loadBoundariesAndMask();
@@ -84,8 +86,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupUIEvents();
     setupHealthListener();
 
-    // Load initial mock or default state
-    await loadInitialPreset('monsoon_july');
+    // Starting weather: real days in live mode (dashboard/presets/), synthetic in mock mode
+    const firstScenario = await setupScenarioSelect();
+    await loadInitialPreset(firstScenario);
 
     // Run first baseline simulation
     document.getElementById('btn-run').click();
@@ -108,6 +111,7 @@ async function loadBoundariesAndMask() {
       const statesGeoJSON = await stRes.json();
 
       setBoundaries(indiaGeoJSON, statesGeoJSON);
+      setWeatherBoundaries(indiaGeoJSON, statesGeoJSON);
       landMask = buildLandMask(indiaGeoJSON);
       stateAssignments = buildStateAssignments(statesGeoJSON);
     }
@@ -118,11 +122,37 @@ async function loadBoundariesAndMask() {
 
 async function loadInitialPreset(id) {
   const data = await api.getPreset(id);
-  if (data) {
-    store.set('initStates', data.init_states);
-    store.set('doySinCos', data.doy_sincos);
-    updateDoyDisplay(store.get('dayOfYear'));
+  if (!data) {
+    showErrorNotification(config.mode === 'live'
+      ? `No starting state "${id}". Create them with: python tools/make_presets.py --data data/india_climate_train.nc`
+      : `Mock preset "${id}" not found.`);
+    return false;
   }
+  store.set('initStates', data.init_states);
+  store.set('doySinCos', data.doy_sincos);
+  if (Number.isFinite(data.doy)) store.set('dayOfYear', data.doy);
+  if (data.last_input_day || data.date) store.set('scenarioDate', data.last_input_day || data.date);
+  else store.set('scenarioDate', null);
+  updateDoyDisplay(store.get('dayOfYear'), store.get('scenarioDate'));
+  const note = document.getElementById('val-scenario-note');
+  if (note) note.textContent = data.description || '';
+  return true;
+}
+
+async function setupScenarioSelect() {
+  const sel = document.getElementById('select-scenario');
+  const list = await api.getPresets();
+  sel.innerHTML = '';
+  list.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.label;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', async (e) => {
+    if (await loadInitialPreset(e.target.value)) document.getElementById('btn-run').click();
+  });
+  return list.length ? list[0].id : 'monsoon_july';
 }
 
 function setupHealthListener() {
@@ -205,11 +235,53 @@ function setupUIEvents() {
   document.getElementById('toggle-wind').addEventListener('change', (e) => {
     const on = e.target.checked;
     store.set('windEnabled', on);
-    toggleWind(on);
+    toggleWindOverlay(on);
   });
 
-  // Reset view
-  document.getElementById('btn-reset-view').addEventListener('click', resetView);
+  // Satellite view toggle
+  const satToggle = document.getElementById('toggle-satellite');
+  if (satToggle) {
+    if (satToggle.checked) toggleSatellite(true);
+    satToggle.addEventListener('change', (e) => {
+      toggleSatellite(e.target.checked);
+    });
+  }
+
+  // Weather atmospheric FX toggle
+  const fxToggle = document.getElementById('toggle-weather-fx');
+  if (fxToggle) {
+    fxToggle.addEventListener('change', (e) => {
+      toggleWeatherFx(e.target.checked);
+    });
+  }
+
+  // Fullscreen map toggle
+  document.getElementById('btn-fullscreen-map')?.addEventListener('click', () => {
+    document.body.classList.toggle('fullscreen-map');
+    const isFull = document.body.classList.contains('fullscreen-map');
+    const btn = document.getElementById('btn-fullscreen-map');
+    btn.textContent = isFull ? 'Exit Fullscreen' : 'Fullscreen Map';
+    setTimeout(() => mapInstance?.resize(), 200);
+  });
+
+  // Toggle sidebars (Panels)
+  document.getElementById('btn-toggle-panels')?.addEventListener('click', () => {
+    document.body.classList.toggle('panels-hidden');
+    setTimeout(() => mapInstance?.resize(), 200);
+  });
+
+  // Collapsible Accordion Panels in Left Rail
+  document.querySelectorAll('.panel .panel__header').forEach(header => {
+    header.addEventListener('click', () => {
+      const panel = header.closest('.panel');
+      if (panel) {
+        panel.classList.toggle('panel--collapsed');
+      }
+    });
+  });
+
+  // Navigation search bar & settings palette
+  setupNavigationSearch();
 
   // Preset selector
   document.getElementById('select-preset').addEventListener('change', (e) => {
@@ -309,9 +381,102 @@ function setupUIEvents() {
   });
 }
 
-function updateDoyDisplay(doy) {
+function setupNavigationSearch() {
+  const input = document.getElementById('nav-search-input');
+  const dropdown = document.getElementById('nav-search-results');
+  if (!input || !dropdown) return;
+
+  // Search registry of quick options, settings, variables, and presets
+  const searchableActions = [
+    { title: 'Variable: 2m Temperature (K)', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 't2m'; store.set('selectedChannel', 't2m'); updateDisplay(); } },
+    { title: 'Variable: Precipitation / Rain (mm/day)', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 'tp'; store.set('selectedChannel', 'tp'); updateDisplay(); } },
+    { title: 'Variable: Wind Speed (m/s)', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 'wind_speed'; store.set('selectedChannel', 'wind_speed'); updateDisplay(); } },
+    { title: 'Variable: Pressure (Pa)', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 'msl'; store.set('selectedChannel', 'msl'); updateDisplay(); } },
+    { title: 'Variable: Water Vapour / Moisture', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 'tcwv'; store.set('selectedChannel', 'tcwv'); updateDisplay(); } },
+    { title: 'Multiverse Branch: Prime (Baseline)', cat: 'Branch', action: () => { document.querySelector('input[name="view-mode"][value="normal"]').click(); } },
+    { title: 'Multiverse Branch: Shocked Run', cat: 'Branch', action: () => { document.querySelector('input[name="view-mode"][value="shocked"]').click(); } },
+    { title: 'Multiverse Branch: Difference Mode', cat: 'Branch', action: () => { document.querySelector('input[name="view-mode"][value="difference"]').click(); } },
+    { title: 'Toggle Satellite Basemap', cat: 'Layer', action: () => { const cb = document.getElementById('toggle-satellite'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); } },
+    { title: 'Toggle Atmospheric Weather FX', cat: 'Layer', action: () => { const cb = document.getElementById('toggle-weather-fx'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); } },
+    { title: 'Toggle 2D Flat / 3D Extrusion', cat: 'Layer', action: () => { const cb = document.getElementById('toggle-flat'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); } },
+    { title: 'Toggle Wind Streamlines', cat: 'Layer', action: () => { const cb = document.getElementById('toggle-wind'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); } },
+    { title: 'Reset Camera View', cat: 'View', action: () => resetView() },
+    { title: 'Fullscreen Map (Hide All Panels)', cat: 'View', action: () => document.getElementById('btn-fullscreen-map')?.click() },
+    { title: 'Run Full Simulation', cat: 'Run', action: () => document.getElementById('btn-run')?.click() },
+    { title: 'Apply Random Judge Shock', cat: 'Shock', action: () => document.getElementById('btn-judge-shock')?.click() },
+    { title: 'Apply Preset: Warm Bay of Bengal', cat: 'Preset', action: () => { const p = document.getElementById('select-preset'); p.value = 'warm_ocean'; p.dispatchEvent(new Event('change')); } },
+    { title: 'Apply Preset: Monsoon Stall', cat: 'Preset', action: () => { const p = document.getElementById('select-preset'); p.value = 'monsoon_stall'; p.dispatchEvent(new Event('change')); } },
+    { title: 'Apply Preset: Null Test (Control)', cat: 'Preset', action: () => document.getElementById('btn-null-shock')?.click() },
+    { title: 'Open Sectoral Impact Tab', cat: 'Tab', action: () => document.querySelector('.tab-bar__tab[data-tab="impact"]')?.click() },
+    { title: 'Open Causality Radius Tab', cat: 'Tab', action: () => document.querySelector('.tab-bar__tab[data-tab="radius"]')?.click() },
+    { title: 'Open Diagnostics Tab', cat: 'Tab', action: () => document.querySelector('.tab-bar__tab[data-tab="diag"]')?.click() },
+    { title: 'Run Physics Verification Suite', cat: 'Test', action: () => { document.querySelector('.tab-bar__tab[data-tab="battery"]')?.click(); document.getElementById('btn-run-battery')?.click(); } }
+  ];
+
+  function renderResults(q) {
+    dropdown.innerHTML = '';
+    const query = q.toLowerCase().trim();
+    if (!query) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
+    const matches = searchableActions.filter(item =>
+      item.title.toLowerCase().includes(query) || item.cat.toLowerCase().includes(query)
+    );
+
+    if (matches.length === 0) {
+      dropdown.innerHTML = '<div class="search-item" style="color:var(--text-dim);cursor:default;">No matching setting or action found.</div>';
+      dropdown.style.display = 'block';
+      return;
+    }
+
+    matches.slice(0, 8).forEach(match => {
+      const el = document.createElement('div');
+      el.className = 'search-item';
+      el.innerHTML = `<span>${match.title}</span><span class="search-item-cat">${match.cat}</span>`;
+      el.addEventListener('click', () => {
+        dropdown.style.display = 'none';
+        input.value = '';
+        input.blur();
+        match.action();
+      });
+      dropdown.appendChild(el);
+    });
+    dropdown.style.display = 'block';
+  }
+
+  input.addEventListener('input', (e) => renderResults(e.target.value));
+  input.addEventListener('focus', (e) => renderResults(e.target.value));
+
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  // Shortcut "/" or Ctrl+K / Cmd+K opens search
+  window.addEventListener('keydown', (e) => {
+    if ((e.key === '/' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) && document.activeElement !== input) {
+      e.preventDefault();
+      input.focus();
+      input.select();
+    } else if (e.key === 'Escape' && document.activeElement === input) {
+      dropdown.style.display = 'none';
+      input.blur();
+    }
+  });
+}
+
+function updateDoyDisplay(doy, dateStr = null) {
   const lbl = document.getElementById('val-doy');
-  if (lbl) lbl.textContent = formatDoy(doy);
+  if (!lbl) return;
+  const doyText = formatDoy(doy);
+  if (dateStr) {
+    lbl.textContent = `${dateStr} • ${doyText}`;
+  } else {
+    lbl.textContent = doyText;
+  }
 }
 
 function populatePresetsDropdown(presets) {
@@ -380,6 +545,7 @@ function handleCustomShockInput() {
 function applyCustomShock(shockDef) {
   store.set('shock', shockDef);
   setShockBox(shockDef.box);
+  setWeatherShockBox(shockDef.box);
   updateScenarioSummary();
 
   // Edge band warning check
@@ -595,15 +761,21 @@ function updateDisplay() {
       isFlat
     });
 
-    // Feed wind layer
-    if (store.get('windEnabled')) {
-      setWindData(buffer, step);
-    }
+    // Feed wind and atmospheric effects
+    updateWeatherState({
+      buffer,
+      step,
+      channelKey: chKey,
+      mode
+    });
 
     // Update legend
     const legendContainer = document.getElementById('legend-container');
     const chMeta = channelByKey(chKey);
-    renderLegend(legendContainer, chKey, isDiff, chMeta ? chMeta.defaultRange : [0, 1]);
+    const legendRange = isDiff
+      ? (DIFFERENCE_RANGES[chKey] || [-5, 5])
+      : (chMeta ? chMeta.defaultRange : [0, 1]);
+    renderLegend(legendContainer, chKey, isDiff, legendRange);
   }
 }
 

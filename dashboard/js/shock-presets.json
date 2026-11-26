@@ -1,40 +1,101 @@
 {
-  "_doc": "Shock presets for Forecastrophe. Coordinates are in degrees. Channel magnitudes are in physical units. Boxes marked TODO have placeholder coordinates pending the kit's exact values.",
-
+  "_doc": "Shock presets for Forecastrophe. Coordinates are in degrees, magnitudes in physical units. warm_ocean and monsoon_stall match the organisers' kit exactly (monsoon_r1/contract.py + scoring.make_shock).",
   "presets": [
     {
       "key": "warm_ocean",
       "label": "Warm Bay of Bengal",
-      "description": "+3 K surface temperature over the Bay of Bengal",
-      "box": { "latMin": 8, "latMax": 20, "lonMin": 80, "lonMax": 92 },
-      "channels": [{ "index": 0, "mode": "additive", "value": 3 }],
-      "softEdge": false,
-      "_note": "TODO: replace box with kit's exact values"
+      "description": "+3 K t2m and +15% moisture over the Bay of Bengal (kit's grader shock)",
+      "box": {
+        "latMin": 8,
+        "latMax": 20,
+        "lonMin": 82,
+        "lonMax": 94
+      },
+      "channels": [
+        {
+          "index": 0,
+          "mode": "additive",
+          "value": 3.0
+        },
+        {
+          "index": 5,
+          "mode": "percent",
+          "value": 15.0
+        }
+      ],
+      "softEdge": false
     },
     {
       "key": "half_warm_ocean",
       "label": "Half Warm Bay of Bengal",
-      "description": "+1.5 K t2m over the Bay (half size for linearity test)",
-      "box": { "latMin": 8, "latMax": 20, "lonMin": 80, "lonMax": 92 },
-      "channels": [{ "index": 0, "mode": "additive", "value": 1.5 }],
+      "description": "+1.5 K t2m and +7.5% moisture over the Bay (half size: linearity test)",
+      "box": {
+        "latMin": 8,
+        "latMax": 20,
+        "lonMin": 82,
+        "lonMax": 94
+      },
+      "channels": [
+        {
+          "index": 0,
+          "mode": "additive",
+          "value": 1.5
+        },
+        {
+          "index": 5,
+          "mode": "percent",
+          "value": 7.5
+        }
+      ],
       "softEdge": false
     },
     {
       "key": "cool_ocean",
       "label": "Cool Bay of Bengal",
-      "description": "-3 K t2m over the Bay (symmetric test)",
-      "box": { "latMin": 8, "latMax": 20, "lonMin": 80, "lonMax": 92 },
-      "channels": [{ "index": 0, "mode": "additive", "value": -3 }],
+      "description": "-3 K t2m and -15% moisture over the Bay (symmetry test)",
+      "box": {
+        "latMin": 8,
+        "latMax": 20,
+        "lonMin": 82,
+        "lonMax": 94
+      },
+      "channels": [
+        {
+          "index": 0,
+          "mode": "additive",
+          "value": -3.0
+        },
+        {
+          "index": 5,
+          "mode": "percent",
+          "value": -15.0
+        }
+      ],
       "softEdge": false
     },
     {
       "key": "monsoon_stall",
       "label": "Weaker Arabian Sea Wind",
-      "description": "-40% u10 wind over the Arabian Sea",
-      "box": { "latMin": 8, "latMax": 22, "lonMin": 66, "lonMax": 76 },
-      "channels": [{ "index": 2, "mode": "percent", "value": -40 }],
-      "softEdge": false,
-      "_note": "TODO: replace box with kit's exact values"
+      "description": "-40% of both wind components over the Arabian Sea (kit's grader shock)",
+      "box": {
+        "latMin": 8,
+        "latMax": 20,
+        "lonMin": 65,
+        "lonMax": 75
+      },
+      "channels": [
+        {
+          "index": 2,
+          "mode": "percent",
+          "value": -40
+        },
+        {
+          "index": 3,
+          "mode": "percent",
+          "value": -40
+        }
+      ],
+      "softEdge": false
     },
     {
       "key": "null",
@@ -48,16 +109,38 @@
       "key": "local_low",
       "label": "Local Low Pressure (Bay)",
       "description": "-500 Pa MSL over the Bay of Bengal",
-      "box": { "latMin": 10, "latMax": 18, "lonMin": 82, "lonMax": 90 },
-      "channels": [{ "index": 4, "mode": "additive", "value": -500 }],
+      "box": {
+        "latMin": 10,
+        "latMax": 18,
+        "lonMin": 82,
+        "lonMax": 90
+      },
+      "channels": [
+        {
+          "index": 4,
+          "mode": "additive",
+          "value": -500
+        }
+      ],
       "softEdge": false
     },
     {
       "key": "stress_extreme_heat",
       "label": "[Stress] Extreme Heat",
       "description": "+50 K over a box (extreme, unreliable)",
-      "box": { "latMin": 15, "latMax": 25, "lonMin": 75, "lonMax": 85 },
-      "channels": [{ "index": 0, "mode": "additive", "value": 50 }],
+      "box": {
+        "latMin": 15,
+        "latMax": 25,
+        "lonMin": 75,
+        "lonMax": 85
+      },
+      "channels": [
+        {
+          "index": 0,
+          "mode": "additive",
+          "value": 50
+        }
+      ],
       "softEdge": false,
       "_stress": true
     },
@@ -65,8 +148,19 @@
       "key": "stress_no_wind",
       "label": "[Stress] Kill Wind",
       "description": "-90% u10 over the entire domain",
-      "box": { "latMin": 6.5, "latMax": 37.5, "lonMin": 65.5, "lonMax": 100.5 },
-      "channels": [{ "index": 2, "mode": "percent", "value": -90 }],
+      "box": {
+        "latMin": 6.5,
+        "latMax": 37.5,
+        "lonMin": 65.5,
+        "lonMax": 100.5
+      },
+      "channels": [
+        {
+          "index": 2,
+          "mode": "percent",
+          "value": -90
+        }
+      ],
       "softEdge": false,
       "_stress": true
     },
@@ -74,8 +168,19 @@
       "key": "stress_moisture_x6",
       "label": "[Stress] Moisture x6",
       "description": "Multiply tcwv by 6 everywhere",
-      "box": { "latMin": 6.5, "latMax": 37.5, "lonMin": 65.5, "lonMax": 100.5 },
-      "channels": [{ "index": 5, "mode": "multiplier", "value": 6 }],
+      "box": {
+        "latMin": 6.5,
+        "latMax": 37.5,
+        "lonMin": 65.5,
+        "lonMax": 100.5
+      },
+      "channels": [
+        {
+          "index": 5,
+          "mode": "multiplier",
+          "value": 6
+        }
+      ],
       "softEdge": false,
       "_stress": true
     },
@@ -83,14 +188,43 @@
       "key": "stress_random",
       "label": "[Stress] Seeded Random Noise",
       "description": "5-std seeded random noise on all channels",
-      "box": { "latMin": 6.5, "latMax": 37.5, "lonMin": 65.5, "lonMax": 100.5 },
+      "box": {
+        "latMin": 6.5,
+        "latMax": 37.5,
+        "lonMin": 65.5,
+        "lonMax": 100.5
+      },
       "channels": [
-        { "index": 0, "mode": "additive", "value": "random_5std" },
-        { "index": 1, "mode": "additive", "value": "random_5std" },
-        { "index": 2, "mode": "additive", "value": "random_5std" },
-        { "index": 3, "mode": "additive", "value": "random_5std" },
-        { "index": 4, "mode": "additive", "value": "random_5std" },
-        { "index": 5, "mode": "additive", "value": "random_5std" }
+        {
+          "index": 0,
+          "mode": "additive",
+          "value": "random_5std"
+        },
+        {
+          "index": 1,
+          "mode": "additive",
+          "value": "random_5std"
+        },
+        {
+          "index": 2,
+          "mode": "additive",
+          "value": "random_5std"
+        },
+        {
+          "index": 3,
+          "mode": "additive",
+          "value": "random_5std"
+        },
+        {
+          "index": 4,
+          "mode": "additive",
+          "value": "random_5std"
+        },
+        {
+          "index": 5,
+          "mode": "additive",
+          "value": "random_5std"
+        }
       ],
       "softEdge": false,
       "_stress": true,
@@ -100,8 +234,19 @@
       "key": "stress_whole_map_heat",
       "label": "[Stress] +10 K Everywhere",
       "description": "+10 K t2m over the entire domain",
-      "box": { "latMin": 6.5, "latMax": 37.5, "lonMin": 65.5, "lonMax": 100.5 },
-      "channels": [{ "index": 0, "mode": "additive", "value": 10 }],
+      "box": {
+        "latMin": 6.5,
+        "latMax": 37.5,
+        "lonMin": 65.5,
+        "lonMax": 100.5
+      },
+      "channels": [
+        {
+          "index": 0,
+          "mode": "additive",
+          "value": 10
+        }
+      ],
       "softEdge": false,
       "_stress": true
     },
@@ -109,8 +254,19 @@
       "key": "stress_deep_low",
       "label": "[Stress] Deep Low",
       "description": "-5000 Pa MSL low-pressure centre",
-      "box": { "latMin": 12, "latMax": 18, "lonMin": 82, "lonMax": 90 },
-      "channels": [{ "index": 4, "mode": "additive", "value": -5000 }],
+      "box": {
+        "latMin": 12,
+        "latMax": 18,
+        "lonMin": 82,
+        "lonMax": 90
+      },
+      "channels": [
+        {
+          "index": 4,
+          "mode": "additive",
+          "value": -5000
+        }
+      ],
       "softEdge": false,
       "_stress": true
     }

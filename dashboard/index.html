@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/png" href="assets/logo-icon.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Forecastrophe // Climate Digital Twin of India</title>
@@ -16,32 +17,54 @@
 </head>
 <body>
 
-  <!-- Top App Header -->
+  <!-- Top App Header / Navigation Bar (3-Zone Flex Layout) -->
   <header id="app-header">
-    <div class="wordmark">Forecastrophe</div>
+    <!-- Left Zone: Controls & Wordmark -->
+    <div class="header-zone-left">
+      <button id="btn-toggle-panels" class="btn btn--ghost btn--sm" title="Toggle Sidebars (Fullscreen Map)">
+        <span id="panels-toggle-icon">|||</span>
+        <span id="panels-toggle-text">Panels</span>
+      </button>
+      <div class="wordmark" title="Forecastrophe // Planet-scale Simulator">
+        <img src="assets/logo-full-dark-transparent.png" alt="Forecastrophe" class="brand-logo-img">
+      </div>
+      <div class="health-indicator" title="Engine Connectivity Status">
+        <span id="health-dot" class="health-dot health-dot--connecting"></span>
+        <span id="health-status-text" class="text-mono health-status-text">Connecting...</span>
+      </div>
+    </div>
     
-    <div style="display:flex;align-items:center;gap:8px;margin-left:16px;">
-      <span id="health-dot" class="health-dot health-dot--connecting"></span>
-      <span id="health-status-text" class="text-mono" style="font-size:11px;color:var(--text-secondary);">Connecting...</span>
+    <!-- Centre Zone: Command Palette Search -->
+    <div class="header-zone-center">
+      <div class="header-search-box">
+        <span class="search-icon">Search</span>
+        <input id="nav-search-input" type="text" placeholder="Search settings…" autocomplete="off" spellcheck="false">
+        <span class="search-shortcut">Ctrl+K /</span>
+        <div id="nav-search-results" class="nav-search-dropdown" style="display:none;"></div>
+      </div>
     </div>
 
-    <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
-      <!-- Latency Metric -->
-      <div style="display:flex;align-items:center;gap:6px;">
+    <!-- Right Zone: Metrics, Badges & Segmented Export Actions -->
+    <div class="header-zone-right">
+      <!-- Latency Metric (Single nowrap fixed slot) -->
+      <div class="latency-metric-box" title="Combined rollout compute time">
         <span class="text-label">Inference:</span>
-        <span id="latency-label" class="text-mono" style="font-size:11px;">0 ms</span>
-        <div style="width:50px;height:6px;background:var(--surface);border-radius:2px;overflow:hidden;">
-          <div id="latency-bar-fill" style="width:0%;height:100%;background:var(--accent);"></div>
+        <span id="latency-label" class="text-mono latency-value">0 ms</span>
+        <div class="latency-bar-track">
+          <div id="latency-bar-fill" class="latency-bar-fill"></div>
         </div>
       </div>
 
-      <!-- Mode Badge -->
-      <span id="badge-mode" class="badge badge--mock" style="display:none;">MOCK ENGINE</span>
+      <!-- Single-line Mock Engine Pill Badge with Tooltip -->
+      <span id="badge-mode" class="badge badge--mock" style="display:none;" title="Client-Side Physics Emulator - Not Live Torch Model Output">MOCK ENGINE</span>
 
-      <!-- Export actions -->
-      <button id="btn-export-png" class="btn btn--ghost btn--sm">PNG Map</button>
-      <button id="btn-export-json" class="btn btn--ghost btn--sm">JSON Run</button>
-      <button id="btn-export-csv" class="btn btn--ghost btn--sm">CSV Impact</button>
+      <!-- Segmented Export Group -->
+      <div class="btn-export-group">
+        <button id="btn-fullscreen-map" class="btn btn--ghost btn--sm" title="Toggle Fullscreen Map">Fullscreen</button>
+        <button id="btn-export-png" class="btn btn--ghost btn--sm" title="Export Map Canvas as PNG">PNG</button>
+        <button id="btn-export-json" class="btn btn--ghost btn--sm" title="Export Simulation Run State as JSON">JSON</button>
+        <button id="btn-export-csv" class="btn btn--ghost btn--sm" title="Export Sectoral State Impact as CSV">CSV</button>
+      </div>
     </div>
   </header>
 
@@ -51,21 +74,30 @@
     <!-- Left Control Rail: Scenario & Shock Painter -->
     <aside id="left-rail">
       
-      <!-- Scenario Setup Panel -->
-      <div class="panel">
-        <div class="panel__header">Scenario Parameters</div>
+      <!-- Scenario Setup Panel (Collapsible Accordion) -->
+      <div class="panel" id="panel-scenario">
+        <div class="panel__header">
+          <span>Scenario Parameters</span>
+          <span class="panel__collapse-indicator">-</span>
+        </div>
         <div class="panel__body">
           <div style="margin-bottom:12px;">
-            <label class="text-label">Base Climatology (DOY)</label>
-            <div id="val-doy" class="text-mono" style="font-size:12px;color:var(--text-primary);margin-top:2px;">15 Jul (DOY 196)</div>
+            <label class="text-label" for="select-scenario">Starting Weather (real days)</label>
+            <select id="select-scenario" class="select" style="width:100%;margin-top:4px;"></select>
+            <div id="val-scenario-note" class="text-mono" style="font-size:10px;color:var(--text-secondary);margin-top:3px;"></div>
           </div>
 
           <div style="margin-bottom:12px;">
-            <div style="display:flex;justify-content:space-between;">
+            <label class="text-label">Start Day of Year (DOY)</label>
+            <div id="val-doy" class="text-mono" style="font-size:12px;color:var(--text-primary);margin-top:3px;">15 Jul (DOY 196)</div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
               <label class="text-label">Forecast Horizon</label>
-              <span id="val-steps" class="text-mono" style="font-size:11px;color:var(--accent);">14</span>
+              <span id="val-steps" class="text-mono" style="font-size:11px;color:var(--accent);font-weight:600;">14</span>
             </div>
-            <input id="slider-steps" type="range" min="1" max="14" value="14" class="slider" style="width:100%;margin-top:4px;">
+            <input id="slider-steps" type="range" min="1" max="14" value="14" class="slider" style="width:100%;margin-top:6px;">
           </div>
 
           <div style="display:flex;gap:8px;margin-top:16px;">
@@ -76,34 +108,50 @@
         </div>
       </div>
 
-      <!-- Shock Painter Panel -->
-      <div class="panel">
-        <div class="panel__header">Shock Painter (What-If)</div>
+      <!-- Shock Painter Panel (Collapsible Accordion) -->
+      <div class="panel" id="panel-shock">
+        <div class="panel__header">
+          <span>Shock Painter (What-If)</span>
+          <span class="panel__collapse-indicator">-</span>
+        </div>
         <div class="panel__body">
           <div style="margin-bottom:10px;">
-            <label class="text-label">Presets</label>
-            <select id="select-preset" class="select" style="width:100%;margin-top:2px;">
+            <label class="text-label" for="select-preset">Shock Presets</label>
+            <select id="select-preset" class="select" style="width:100%;margin-top:4px;">
               <option value="">-- Choose Preset --</option>
             </select>
           </div>
 
-          <div style="margin-bottom:10px;">
-            <button id="btn-judge-shock" class="btn btn--ghost btn--sm" style="width:100%;">Random "Judge Shock"</button>
+          <div style="margin-bottom:12px;">
+            <button id="btn-judge-shock" class="btn btn--ghost btn--sm" style="width:100%;">Random Judge Shock</button>
           </div>
 
-          <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;">
-            <label class="text-label">Bounding Box (Lat / Lon)</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
-              <input id="input-lat-min" type="number" step="0.5" placeholder="Min Lat" class="input">
-              <input id="input-lat-max" type="number" step="0.5" placeholder="Max Lat" class="input">
-              <input id="input-lon-min" type="number" step="0.5" placeholder="Min Lon" class="input">
-              <input id="input-lon-max" type="number" step="0.5" placeholder="Max Lon" class="input">
+          <!-- Bounding Box 2x2 Grid with explicit labels -->
+          <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px;">
+            <label class="text-label" style="display:block;margin-bottom:6px;">Bounding Box (Lat / Lon)</label>
+            <div class="bounds-grid-2x2">
+              <div class="bounds-cell">
+                <span class="bounds-cell__label">Min Lat</span>
+                <input id="input-lat-min" type="number" step="0.5" placeholder="8.0" class="input">
+              </div>
+              <div class="bounds-cell">
+                <span class="bounds-cell__label">Max Lat</span>
+                <input id="input-lat-max" type="number" step="0.5" placeholder="37.5" class="input">
+              </div>
+              <div class="bounds-cell">
+                <span class="bounds-cell__label">Min Lon</span>
+                <input id="input-lon-min" type="number" step="0.5" placeholder="68.0" class="input">
+              </div>
+              <div class="bounds-cell">
+                <span class="bounds-cell__label">Max Lon</span>
+                <input id="input-lon-max" type="number" step="0.5" placeholder="97.5" class="input">
+              </div>
             </div>
           </div>
 
-          <div style="margin-top:10px;">
-            <label class="text-label">Perturbation Target</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
+          <div style="margin-top:12px;">
+            <label class="text-label" style="display:block;margin-bottom:6px;">Perturbation Target</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
               <select id="select-shock-ch" class="select">
                 <option value="0">t2m (Temp)</option>
                 <option value="1">tp (Rain)</option>
@@ -118,7 +166,7 @@
                 <option value="multiplier">Multiplier (x)</option>
               </select>
             </div>
-            <input id="input-shock-mag" type="number" step="0.1" value="3.0" class="input" style="width:100%;margin-top:6px;">
+            <input id="input-shock-mag" type="number" step="0.1" value="3.0" class="input" style="width:100%;margin-top:6px;" placeholder="Magnitude">
           </div>
 
           <!-- Edge band alert warning -->
@@ -138,42 +186,63 @@
       <div id="map"></div>
       <canvas id="wind-canvas"></canvas>
 
-      <!-- Map Floating Overlay Controls -->
-      <div style="position:absolute;top:12px;left:12px;z-index:20;background:rgba(24,27,32,0.85);backdrop-filter:blur(4px);padding:8px 12px;border:1px solid var(--border);border-radius:3px;display:flex;gap:12px;align-items:center;">
-        <div>
-          <label class="text-label" style="display:block;">Variable</label>
-          <select id="select-channel" class="select" style="margin-top:2px;">
+      <!-- Map Floating Overlay Controls (Variable / Branch / Layers) -->
+      <div class="map-floating-bar">
+        <!-- Variable Dropdown -->
+        <div class="ctrl-group">
+          <label class="ctrl-label">VARIABLE</label>
+          <select id="select-channel" class="select select--compact">
             <option value="t2m">2m Temperature (K)</option>
             <option value="tp">Precipitation (mm/day)</option>
             <option value="u10">10m U-Wind (m/s)</option>
             <option value="v10">10m V-Wind (m/s)</option>
-            <option value="wind_speed">Derived Wind Speed (m/s)</option>
+            <option value="wind_speed">Wind Speed (m/s)</option>
             <option value="msl">MSL Pressure (Pa)</option>
             <option value="tcwv">Water Vapour (kg/m²)</option>
           </select>
         </div>
 
-        <div style="border-left:1px solid var(--border);padding-left:12px;">
-          <label class="text-label" style="display:block;">Multiverse Branch</label>
-          <div style="display:flex;gap:8px;margin-top:4px;font-size:11px;" class="text-mono">
-            <label><input type="radio" name="view-mode" value="normal"> Prime</label>
-            <label><input type="radio" name="view-mode" value="shocked"> Shocked</label>
-            <label><input type="radio" name="view-mode" value="difference" checked> Difference</label>
+        <div class="ctrl-divider"></div>
+
+        <!-- Segmented Multiverse Selector -->
+        <div class="ctrl-group">
+          <label class="ctrl-label">BRANCH</label>
+          <div class="segmented-control">
+            <label class="seg-btn">
+              <input type="radio" name="view-mode" value="normal" checked>
+              <span>Prime</span>
+            </label>
+            <label class="seg-btn">
+              <input type="radio" name="view-mode" value="shocked">
+              <span>Shocked</span>
+            </label>
+            <label class="seg-btn">
+              <input type="radio" name="view-mode" value="difference">
+              <span>Difference</span>
+            </label>
           </div>
         </div>
 
-        <div style="border-left:1px solid var(--border);padding-left:12px;display:flex;gap:8px;align-items:center;">
-          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-flat"> 2D Flat</label>
-          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-wind"> Wind</label>
-          <button id="btn-reset-view" class="btn btn--ghost btn--sm">Reset Camera</button>
+        <div class="ctrl-divider"></div>
+
+        <!-- Toggles with modern pill switches -->
+        <div class="ctrl-group">
+          <label class="ctrl-label">LAYERS</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <label class="pill-toggle"><input type="checkbox" id="toggle-satellite"><span>Satellite</span></label>
+            <label class="pill-toggle"><input type="checkbox" id="toggle-weather-fx" checked><span>Weather FX</span></label>
+            <label class="pill-toggle"><input type="checkbox" id="toggle-flat" checked><span>2D Flat</span></label>
+            <label class="pill-toggle"><input type="checkbox" id="toggle-wind" checked><span>Wind</span></label>
+            <button id="btn-reset-view" class="btn btn--ghost btn--sm" title="Reset Camera View Angle"><span>Reset View</span></button>
+          </div>
         </div>
       </div>
 
       <!-- Color Legend (Bottom Left of Map) -->
-      <div id="legend-container" style="position:absolute;bottom:12px;left:12px;z-index:20;background:rgba(24,27,32,0.85);padding:6px 10px;border:1px solid var(--border);border-radius:2px;"></div>
+      <div id="legend-container" class="map-legend-box"></div>
 
       <!-- Interactive Map Tooltip -->
-      <div id="map-tooltip" style="position:absolute;display:none;z-index:40;background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:6px 10px;pointer-events:none;font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,0.5);"></div>
+      <div id="map-tooltip" class="map-tooltip-box"></div>
     </section>
 
     <!-- Right Inspector Tabs -->
@@ -189,49 +258,49 @@
       </div>
 
       <!-- Tab: Radius & Causality -->
-      <div id="pane-radius" class="tab-pane" style="padding:12px;display:block;">
-        <div class="text-label" style="margin-bottom:6px;">Causality Compliance (Track 2)</div>
-        <div id="causality-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;"></div>
+      <div id="pane-radius" class="tab-pane" style="padding:14px;display:block;">
+        <div class="text-label" style="margin-bottom:8px;">Causality Compliance (Track 2)</div>
+        <div id="causality-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>
         
-        <div class="text-label" style="margin-bottom:4px;">Response Radius r90 by Day</div>
-        <div id="radius-chart-container" style="background:var(--surface);border-radius:3px;padding:8px 4px;"></div>
+        <div class="text-label" style="margin-bottom:6px;">Response Radius r90 by Day</div>
+        <div id="radius-chart-container" style="background:var(--surface);border-radius:var(--radius-sm);padding:8px 4px;border:1px solid var(--border);"></div>
         
-        <p style="font-size:10px;color:var(--text-dim);margin-top:10px;">
+        <p style="font-size:10px;color:var(--text-dim);margin-top:10px;line-height:1.4;">
           Client-side approximation of organiser checks; authoritative check is the kit's causality_checks. Limit line: 3 + 8*(k+1) cells.
         </p>
       </div>
 
       <!-- Tab: Time Series -->
-      <div id="pane-series" class="tab-pane" style="padding:12px;display:none;">
-        <div id="pinned-cell-title" class="text-label" style="margin-bottom:6px;">Click any cell to pin time-series</div>
-        <div id="series-chart-container" style="background:var(--surface);border-radius:3px;padding:8px 4px;"></div>
+      <div id="pane-series" class="tab-pane" style="padding:14px;display:none;">
+        <div id="pinned-cell-title" class="text-label" style="margin-bottom:8px;">Click any cell on the map to pin time-series</div>
+        <div id="series-chart-container" style="background:var(--surface);border-radius:var(--radius-sm);padding:8px 4px;border:1px solid var(--border);"></div>
       </div>
 
       <!-- Tab: Sectoral Impact -->
-      <div id="pane-impact" class="tab-pane" style="padding:12px;display:none;">
+      <div id="pane-impact" class="tab-pane" style="padding:14px;display:none;">
         <div class="text-label" style="margin-bottom:4px;">National Rainfall Deficit</div>
         <div id="val-national-deficit" class="text-mono" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:12px;">--</div>
 
         <div class="text-label" style="margin-bottom:6px;">State-by-State Anomaly (Cumulative tp)</div>
         <div id="state-impact-bars"></div>
 
-        <p style="font-size:9px;color:var(--text-dim);margin-top:12px;">
+        <p style="font-size:9px;color:var(--text-dim);margin-top:12px;line-height:1.4;">
           Note: model output, not a crop-yield or official risk prediction. Daily mean t2m represents 4-sample average, not afternoon max.
         </p>
       </div>
 
       <!-- Tab: Blur Monitor -->
-      <div id="pane-blur" class="tab-pane" style="padding:12px;display:none;">
-        <div class="text-label" style="margin-bottom:6px;">Spatial Standard Deviation Monitor</div>
+      <div id="pane-blur" class="tab-pane" style="padding:14px;display:none;">
+        <div class="text-label" style="margin-bottom:8px;">Spatial Standard Deviation Monitor</div>
         <div id="blur-table-container"></div>
-        <p style="font-size:9px;color:var(--text-dim);margin-top:8px;">
+        <p style="font-size:9px;color:var(--text-dim);margin-top:10px;line-height:1.4;">
           Relative to Day 0; not the organisers' score. Ratios below 0.4 indicate excessive field smoothing.
         </p>
       </div>
 
       <!-- Tab: Physics Battery -->
-      <div id="pane-battery" class="tab-pane" style="padding:12px;display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div id="pane-battery" class="tab-pane" style="padding:14px;display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <span class="text-label">Automated Verification Suite</span>
           <button id="btn-run-battery" class="btn btn--sm btn--primary">Run Suite</button>
         </div>
@@ -241,13 +310,13 @@
       </div>
 
       <!-- Tab: Diagnostics -->
-      <div id="pane-diag" class="tab-pane" style="padding:12px;display:none;">
-        <div class="text-label" style="margin-bottom:6px;">Server Diagnostics Log</div>
+      <div id="pane-diag" class="tab-pane" style="padding:14px;display:none;">
+        <div class="text-label" style="margin-bottom:8px;">Server Diagnostics Log</div>
         <div id="diagnostics-container"></div>
       </div>
 
       <!-- Tab: Honest Limits -->
-      <div id="pane-limits" class="tab-pane" style="padding:12px;display:none;font-size:11px;color:var(--text-secondary);">
+      <div id="pane-limits" class="tab-pane" style="padding:14px;display:none;font-size:11px;color:var(--text-secondary);">
         <div class="text-label" style="margin-bottom:8px;">Known Model Limitations</div>
         <ul style="padding-left:16px;line-height:1.6;">
           <li><b>Cyclone Track Blur:</b> Significant spread and dispersion observed after Day 4.</li>
@@ -262,21 +331,27 @@
 
   </main>
 
-  <!-- Bottom Timeline Bar -->
+  <!-- Bottom Timeline Bar (2-Row Layout) -->
   <footer id="bottom-bar">
-    <div style="display:flex;align-items:center;gap:6px;">
-      <button id="btn-prev-day" class="btn btn--ghost btn--sm">D-1</button>
-      <button id="btn-play-pause" class="btn btn--primary btn--sm" style="min-width:54px;">Play</button>
-      <button id="btn-next-day" class="btn btn--ghost btn--sm">D+1</button>
-      <span id="val-timeline-day" class="text-mono" style="font-size:12px;font-weight:700;color:var(--text-primary);margin-left:8px;">Day 0</span>
+    <div class="bottom-bar-main-row">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button id="btn-prev-day" class="btn btn--ghost btn--sm" title="Previous Day">Day -1</button>
+        <button id="btn-play-pause" class="btn btn--primary btn--sm" style="min-width:68px;">Play</button>
+        <button id="btn-next-day" class="btn btn--ghost btn--sm" title="Next Day">Day +1</button>
+        <span id="val-timeline-day" class="text-mono" style="font-size:12px;font-weight:700;color:var(--accent);margin-left:8px;background:rgba(245,182,66,0.12);padding:3px 10px;border-radius:var(--radius-sm);border:1px solid rgba(245,182,66,0.3);">Day 0</span>
+      </div>
+
+      <div style="flex:1;min-width:0;margin:0 14px;">
+        <input id="slider-timeline" type="range" min="0" max="13" value="0" class="slider" style="width:100%;">
+      </div>
     </div>
 
-    <div style="flex:1;margin:0 16px;">
-      <input id="slider-timeline" type="range" min="0" max="13" value="0" class="slider" style="width:100%;">
-    </div>
-
-    <div style="font-size:10px;color:var(--text-dim);" class="text-mono">
-      [Space] Play/Pause &bull; [&larr;/&rarr;] Step &bull; [D] Diff &bull; [S] Shock &bull; [P] Present
+    <div class="bottom-bar-hints-row">
+      <span class="kbd-chip">Space</span><span>Play/Pause</span>
+      <span class="kbd-chip">&lt; / &gt;</span><span>Step Day</span>
+      <span class="kbd-chip">D</span><span>Diff Branch</span>
+      <span class="kbd-chip">S</span><span>Shock Branch</span>
+      <span class="kbd-chip">P</span><span>Present Mode</span>
     </div>
   </footer>
 

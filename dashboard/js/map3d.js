@@ -3,7 +3,7 @@
  * Renders 1,152 grid cells as extruded columns whose height and colour encode data.
  * @module map3d
  */
-import { GRID, MAP_DEFAULTS, EXTRUSION_SCALE, channelByKey, HEAVY_RAIN_THRESHOLD } from './constants.js';
+import { GRID, MAP_DEFAULTS, EXTRUSION_SCALE, channelByKey, HEAVY_RAIN_THRESHOLD, DIFFERENCE_RANGES } from './constants.js';
 import { cellBounds, cellCenter, buildGridGeoJSON, flatIndexStep, flatIndex } from './grid.js';
 import { getColorScale } from './colour.js';
 
@@ -13,6 +13,9 @@ let baseGeoJSON = null;
 let currentStyle = 'dark';
 let hoveredCell = null;
 let pinnedCell = null;
+let cachedIndiaGeoJSON = null;
+let cachedStatesGeoJSON = null;
+let satelliteEnabled = false;
 
 /**
  * Initialize MapLibre GL Map.
@@ -77,6 +80,8 @@ export async function initMap({ container, maptilerKey, onCellClick, onCellHover
     map.on('load', () => {
       setupLayers();
       setupInteractions(onCellClick, onCellHover);
+      applyBoundariesToMap();
+      if (satelliteEnabled) toggleSatellite(true);
       resolve(map);
     });
   });
@@ -107,12 +112,12 @@ function setupLayers() {
       'fill-extrusion-color': ['get', 'color'],
       'fill-extrusion-height': ['get', 'height'],
       'fill-extrusion-base': 0,
-      'fill-extrusion-opacity': 0.88,
-      'fill-extrusion-height-transition': { duration: 180 }
+      'fill-extrusion-opacity': 0.82,
+      'fill-extrusion-height-transition': { duration: 250 }
     }
   });
 
-  // Edge band indicator line / subtle border
+  // Cell border grid line
   map.addLayer({
     id: 'forecast-cells-lines',
     type: 'line',
@@ -121,10 +126,10 @@ function setupLayers() {
       'line-color': [
         'case',
         ['==', ['get', 'edge'], 1],
-        'rgba(212, 154, 62, 0.45)', // subtle amber for domain edge band
-        'rgba(42, 45, 53, 0.6)'
+        'rgba(245, 166, 35, 0.65)', // prominent amber for edge domain
+        'rgba(70, 75, 86, 0.5)'
       ],
-      'line-width': ['case', ['==', ['get', 'edge'], 1], 1.5, 0.5]
+      'line-width': ['case', ['==', ['get', 'edge'], 1], 1.8, 0.75]
     }
   });
 
@@ -174,39 +179,127 @@ function setupLayers() {
 
 /**
  * Add India and state boundary layers from GeoJSON objects.
+ * Strong visual contrast with neon accent halo so borders are clearly visible over dark basemaps & data columns.
  * @param {Object} indiaGeoJSON 
  * @param {Object} statesGeoJSON 
  */
 export function setBoundaries(indiaGeoJSON, statesGeoJSON) {
+  cachedIndiaGeoJSON = indiaGeoJSON;
+  cachedStatesGeoJSON = statesGeoJSON;
+  applyBoundariesToMap();
+}
+
+function applyBoundariesToMap() {
   if (!map || !map.isStyleLoaded()) return;
 
-  if (indiaGeoJSON && !map.getSource('india-boundary')) {
-    map.addSource('india-boundary', { type: 'geojson', data: indiaGeoJSON });
-    map.addLayer({
-      id: 'india-outline',
-      type: 'line',
-      source: 'india-boundary',
-      paint: {
-        'line-color': '#e8e9ec',
-        'line-width': 1.8,
-        'line-opacity': 0.85
-      }
-    }, 'forecast-cells');
-  }
-
-  if (statesGeoJSON && !map.getSource('states-boundary')) {
-    map.addSource('states-boundary', { type: 'geojson', data: statesGeoJSON });
+  // 1. States boundaries (refined clean slate lines)
+  if (cachedStatesGeoJSON) {
+    if (!map.getSource('states-boundary')) {
+      map.addSource('states-boundary', { type: 'geojson', data: cachedStatesGeoJSON });
+    }
+    if (map.getLayer('states-outline')) {
+      map.removeLayer('states-outline');
+    }
     map.addLayer({
       id: 'states-outline',
       type: 'line',
       source: 'states-boundary',
       paint: {
-        'line-color': '#686d78',
-        'line-width': 0.8,
-        'line-dasharray': [2, 2],
-        'line-opacity': 0.6
+        'line-color': '#d7e1ee',
+        'line-width': 1.0,
+        'line-dasharray': [3, 2],
+        'line-opacity': 0.65
       }
-    }, 'forecast-cells');
+    });
+  }
+
+  // 2. National boundary (crisp white line with dark contrast under-layer)
+  if (cachedIndiaGeoJSON) {
+    if (!map.getSource('india-boundary')) {
+      map.addSource('india-boundary', { type: 'geojson', data: cachedIndiaGeoJSON });
+    }
+    if (map.getLayer('india-glow')) {
+      map.removeLayer('india-glow');
+    }
+    map.addLayer({
+      id: 'india-glow',
+      type: 'line',
+      source: 'india-boundary',
+      paint: {
+        'line-color': '#0f1218',
+        'line-width': 3.2,
+        'line-opacity': 0.75
+      }
+    });
+
+    if (map.getLayer('india-outline')) {
+      map.removeLayer('india-outline');
+    }
+    map.addLayer({
+      id: 'india-outline',
+      type: 'line',
+      source: 'india-boundary',
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 1.8,
+        'line-opacity': 0.95
+      }
+    });
+  }
+}
+
+/**
+ * Toggle Satellite Basemap layer.
+ * Places high-resolution aerial imagery beneath the transparent weather columns.
+ * @param {boolean} enable
+ */
+export function toggleSatellite(enable) {
+  satelliteEnabled = enable;
+  if (!map || !map.isStyleLoaded()) return;
+
+  if (enable) {
+    if (!map.getSource('satellite-tiles')) {
+      map.addSource('satellite-tiles', {
+        type: 'raster',
+        tiles: [
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        ],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: 'Esri, Maxar, Earthstar Geographics'
+      });
+    }
+
+    if (!map.getLayer('satellite-layer')) {
+      // Place right above background and before forecast-cells
+      const beforeLayer = map.getLayer('forecast-cells') ? 'forecast-cells' : undefined;
+      map.addLayer({
+        id: 'satellite-layer',
+        type: 'raster',
+        source: 'satellite-tiles',
+        paint: {
+          'raster-opacity': 0.95,
+          'raster-saturation': 0.1,
+          'raster-contrast': 0.1
+        }
+      }, beforeLayer);
+    } else {
+      map.setLayoutProperty('satellite-layer', 'visibility', 'visible');
+      map.setPaintProperty('satellite-layer', 'raster-opacity', 0.95);
+    }
+
+    // Lower cell opacity slightly so the real earth texture below is clearly visible through weather colors
+    if (map.getLayer('forecast-cells')) {
+      map.setPaintProperty('forecast-cells', 'fill-extrusion-opacity', 0.52);
+    }
+  } else {
+    if (map.getLayer('satellite-layer')) {
+      map.setLayoutProperty('satellite-layer', 'visibility', 'none');
+    }
+    if (map.getLayer('forecast-cells')) {
+      map.setPaintProperty('forecast-cells', 'fill-extrusion-opacity', 0.82);
+    }
   }
 }
 
@@ -226,7 +319,9 @@ export function updateGridDisplay({ buffer, step, channelKey, isDifference = fal
   const chMeta = channelByKey(channelKey);
   const chIdx = chMeta ? chMeta.index : 0;
   const colorScale = getColorScale(channelKey, isDifference);
-  const range = chMeta ? chMeta.defaultRange : [0, 1];
+  const range = isDifference
+    ? (DIFFERENCE_RANGES[channelKey] || [-5, 5])
+    : (chMeta ? chMeta.defaultRange : [0, 1]);
   const scaleMult = EXTRUSION_SCALE[channelKey] || 1000;
 
   const features = baseGeoJSON.features;

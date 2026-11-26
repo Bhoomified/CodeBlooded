@@ -300,7 +300,7 @@ export function renderLegend(container, channelKey, isDifference, range, opts = 
     const val = range[0] + t * (range[1] - range[0]);
     const lbl = document.createElement('span');
     lbl.className = 'text-mono text-label';
-    lbl.textContent = formatValue(val, channelKey);
+    lbl.textContent = formatValue(val, channelKey, isDifference);
     tickRow.appendChild(lbl);
   }
   container.appendChild(tickRow);
@@ -321,11 +321,17 @@ export function renderLegend(container, channelKey, isDifference, range, opts = 
  * @param {string} [channelKey]
  * @returns {string}
  */
-export function formatValue(val, channelKey) {
+export function formatValue(val, channelKey, isDifference = false) {
   if (!Number.isFinite(val)) return 'N/A';
-  if (channelKey === 'msl') return (val / 100).toFixed(0);  // Pa -> hPa display
-  if (channelKey === 'tp' || channelKey === 'tcwv') return val.toFixed(1);
-  if (Math.abs(val) >= 1000) return val.toFixed(0);
-  if (Math.abs(val) >= 10) return val.toFixed(1);
-  return val.toFixed(2);
+  let formatted = '';
+  if (channelKey === 'msl') formatted = (val / 100).toFixed(0);  // Pa -> hPa display
+  else if (channelKey === 'tp' || channelKey === 'tcwv') formatted = val.toFixed(1);
+  else if (Math.abs(val) >= 1000) formatted = val.toFixed(0);
+  else if (Math.abs(val) >= 10) formatted = val.toFixed(1);
+  else formatted = val.toFixed(2);
+
+  if (isDifference && val > 0 && formatted !== '0' && formatted !== '0.0' && formatted !== '0.00') {
+    return `+${formatted}`;
+  }
+  return formatted;
 }
