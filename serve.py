@@ -1,15 +1,17 @@
 """Multiverse of Monsoon - inference server (Round 1 contract).
+
 The judge runs this exact file offline:  python serve.py --port 8000
-Rules: listen on 0.0.0.0, load weights once at startup from files inside the repo, return finite numbers in
-physical units, answer a 10-step rollout in under 5 s.
+It listens on 0.0.0.0, loads the model bundle from server/bundle once, runs a warm-up rollout,
+and only then answers "ready" on /health. Units on the wire are always physical.
 """
 import argparse
 import os
 import sys
-import time
+import threading
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))  # works from any folder / launcher
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # works from any folder or launcher
+sys.dont_write_bytecode = True  # never write __pycache__ into the (read-only) repo
 
 import numpy as np
 import uvicorn
@@ -17,11 +19,26 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from server.model import MODEL_NAME, load_model, simulate
+from server.core import Simulator
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])  # lets the dashboard call us
-MODEL = load_model()  # loaded once, at import time, before the first request
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])  # front end calls us
+STATE = {"sim": None, "ready": False, "error": ""}
+LOCK = threading.Lock()  # one rollout at a time keeps latency predictable
+
+
+def load():
+    try:
+        sim = Simulator()
+        warm = np.broadcast_to(((np.array([300, 2, 1, 1, 100800, 40], "f4"))[:, None, None]), (3, 6, 32, 36)).copy()
+        sim.simulate(warm, [0.0, 1.0], 10, None)  # warm-up: "ready" is only reported once a rollout has succeeded
+        STATE["sim"], STATE["ready"] = sim, True
+        print(f"Model ready: {sim.model_name}", flush=True)
+        for e in sim.events:
+            print(f"  degraded: {e}", flush=True)
+    except Exception as e:
+        STATE["error"] = f"{type(e).__name__}: {e}"
+        print(f"Model failed to load: {STATE['error']}", flush=True)
 
 
 def _arr(x):
@@ -33,27 +50,32 @@ def _arr(x):
 
 
 @app.post("/health")
-@app.get("/health")  # GET only for humans/browsers; the judge uses POST
+@app.get("/health")  # GET is only for humans and browsers; the judge uses POST
 def health():
-    return {"status": "ready", "model_name": MODEL_NAME}
+    if STATE["ready"]:
+        return {"status": "ready", "model_name": STATE["sim"].model_name}
+    return JSONResponse({"status": "loading", "detail": STATE["error"]}, status_code=503)
 
 
 @app.post("/simulate")
-async def simulate_endpoint(request: Request):
-    t0 = time.perf_counter()
+async def simulate(request: Request):
+    if not STATE["ready"]:
+        return JSONResponse({"error": "model not ready"}, status_code=503)
     try:
         body = await request.json()
         init = _arr(body["init_states"])
         pert = None if body.get("perturbation") is None else _arr(body["perturbation"])
-        out = simulate(MODEL, init, body["doy_sincos"], int(body["steps"]), pert)
-    except (KeyError, ValueError, TypeError) as e:  # bad input -> clear 422, never a 500 crash
+        with LOCK:
+            out, ms, diag = STATE["sim"].simulate(init, body["doy_sincos"], body.get("steps", 10), pert)
+    except (KeyError, ValueError, TypeError) as e:  # bad input -> clear 422, never a 500
         return JSONResponse({"error": str(e)[:300]}, status_code=422)
-    return {"rollout": np.asarray(out, dtype="f4").tolist(), "inference_ms": (time.perf_counter() - t0) * 1000.0}
+    return {"rollout": out.astype("f4").tolist(), "inference_ms": ms, "diagnostics": diag}
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8000)
     port = ap.parse_args().port
-    print(f"Model '{MODEL_NAME}' loaded. Serving on http://localhost:{port}  (Ctrl+C to stop)", flush=True)
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level=os.environ.get("LOG_LEVEL", "info"))
+    threading.Thread(target=load, daemon=True).start()
+    print(f"Serving on http://localhost:{port}  (leave this running; use a second terminal; Ctrl+C to stop)", flush=True)
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level=os.environ.get("LOG_LEVEL", "warning"))
