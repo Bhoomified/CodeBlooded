@@ -246,41 +246,41 @@ export async function initApi(store, config) {
   /*  Presets and meta                                                  */
   /* ---------------------------------------------------------------- */
 
+  /*
+   * Starting states and metadata are static files in dashboard/presets/, written by tools/make_presets.py from the
+   * organisers' training file. The model server stays a pure /health + /simulate service (repo-scan friendly), and no
+   * weather archive is ever shipped inside server/.
+   */
+  const presetsBase = config.presetsBase || 'presets/';
+
+  async function fetchStatic(path) {
+    try {
+      const res = await fetch(path, { cache: 'no-store' });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
   async function getPresets() {
     if (config.mode === 'mock') {
       return mockEngine.getPresets ? mockEngine.getPresets() : [];
     }
-    const url = `${config.apiBase}${config.endpoints.presets}`;
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (res.status === 404) return [];
-      if (!res.ok) return [];
-      return await res.json();
-    } catch { return []; }
+    const idx = await fetchStatic(`${presetsBase}index.json`);
+    return (idx && Array.isArray(idx.presets)) ? idx.presets : [];
   }
 
   async function getPreset(id) {
     if (config.mode === 'mock') {
       return mockEngine.getPreset ? mockEngine.getPreset(id) : null;
     }
-    const url = `${config.apiBase}${config.endpoints.presets}/${id}`;
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch { return null; }
+    return await fetchStatic(`${presetsBase}${id}.json`);
   }
 
   async function getMeta() {
     if (config.mode === 'mock') {
       return mockEngine.getMeta ? mockEngine.getMeta() : null;
     }
-    const url = `${config.apiBase}${config.endpoints.meta}`;
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch { return null; }
+    return await fetchStatic(`${presetsBase}meta.json`);
   }
 
   /* ---------------------------------------------------------------- */

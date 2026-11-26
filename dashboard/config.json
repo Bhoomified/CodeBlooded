@@ -9,5 +9,7 @@
     "simulate": "/simulate",
     "presets": "/presets",
     "meta": "/meta"
-  }
+  },
+  "presetsBase": "presets/",
+  "_doc": "mode 'live' = real model via serve.py (required for judging). 'mock' = in-browser stand-in for UI work only. Starting states are read from presets/ (create them with: python tools/make_presets.py --data data/india_climate_train.nc)."
 }

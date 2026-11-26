@@ -1,7 +1,7 @@
 # Forecastrophe: Climate Digital Twin of India
 > Multiverse of Monsoon (Track 2)
 
-Forecastrophe is a standalone, browser-based climate digital twin dashboard designed for India. It allows meteorologists, disaster response officers, and agriculture planners to explore 14-day forecast rollouts from GenCast, apply targeted what-if shocks (e.g. heated Bay of Bengal waters, stall of Arabian Sea winds), and inspect the spatial response in 3D fill-extrusion columns.
+Forecastrophe is a standalone, browser-based climate digital twin dashboard designed for India. It allows meteorologists, disaster response officers, and agriculture planners to explore up to 14-day forecast rollouts from the team's speed-limited CNN emulator (served by `serve.py`), apply targeted what-if shocks (e.g. heated Bay of Bengal waters, stall of Arabian Sea winds), and inspect the spatial response in 3D fill-extrusion columns.
 
 ---
 
@@ -12,7 +12,7 @@ Forecastrophe is a standalone, browser-based climate digital twin dashboard desi
 - **Single 3D Map Library:** MapLibre GL JS v4.7.1 vendored locally offline with fill-extrusion 3D columns and dark theme.
 - **Synced Wind Particles:** Real-time 2D canvas overlay syncing particle advection with MapLibre's camera matrix.
 - **Zero External CDNs:** Offline-first design. All fonts (Inter, JetBrains Mono) and libraries (MapLibre, uPlot) are locally vendored under `vendor/`.
-- **Dual Engine Architecture:** Runs instantly out of the box with an in-browser `mock-engine.js` (seasonal climatology, physical advection and diffusion). Switchable to live backend APIs by toggling a single field in `config.json`.
+- **Live by default:** `config.json` has `"mode": "live"`, so every map is real `/simulate` output (a judging requirement). The in-browser `mock-engine.js` is kept for UI work only and shows a red MOCK ENGINE badge.
 
 ---
 
@@ -73,7 +73,7 @@ To use high-resolution MapTiler vector basemaps, create `dashboard/config.local.
 ## API Contract Specifications
 
 ### 1. Health (`POST /health` with `GET` fallback)
-- Returns: `{"status": "ready" | "loading" | "error", "model_name": "gencast-mini", "reason": "optional"}`
+- Returns: `{"status": "ready" | "loading" | "error", "model_name": "speed-limited-cnn-w96-b4 [cnn]", "reason": "optional"}`
 
 ### 2. Rollout Simulation (`POST /simulate`)
 Payload:
@@ -103,3 +103,22 @@ Response:
 - `D`: Switch to Difference (Multiverse) mode
 - `S`: Switch to Shocked branch mode
 - `P`: Toggle Presentation Mode (hides sidebars, enlarges 3D map)
+
+---
+
+## Running with the real model (live mode, what judges see)
+
+From the repo root, three terminals:
+
+```bash
+python tools/make_presets.py --data data/india_climate_train.nc   # once: real starting days -> dashboard/presets/
+python serve.py --port 8000                                       # terminal 1: the model
+cd dashboard && python -m http.server 8080                        # terminal 2: the dashboard
+```
+
+Open http://localhost:8080. The **Starting Weather** list holds real days from 2020-2021 (years held out from training):
+monsoon onset, active monsoon, heavy rain, pre-monsoon heat, two cyclones, winter. Each per-day model badge comes from
+the server's `diagnostics` list (`cnn`, or `ridge` / `persistence` if a fallback fired).
+
+The grader's two shocks (`warm_ocean`, `monsoon_stall`) in `js/shock-presets.json` match the kit exactly
+(`monsoon_r1/contract.py`, `scoring.make_shock`). Everything runs offline; no CDN, no internet.

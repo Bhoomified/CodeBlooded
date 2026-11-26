@@ -8,11 +8,11 @@ import { loadConfig } from './config-loader.js';
 import { createStore } from './state.js';
 import { initApi } from './api.js';
 import { computeDoySinCos, formatDoy, dayOfYearToMonthDay } from './doy.js';
-import { CHANNELS, channelByKey, DERIVED_CHANNELS, NULL_SHOCK_EPSILON } from './constants.js';
-import { initMap, updateGridDisplay, setShockBox, setBoundaries, resetView } from './map3d.js';
-import { initWind, setWindData, toggleWind } from './wind.js';
+import { CHANNELS, channelByKey, DERIVED_CHANNELS, NULL_SHOCK_EPSILON, DIFFERENCE_RANGES } from './constants.js';
+import { initMap, updateGridDisplay, setShockBox, setBoundaries, resetView, toggleSatellite } from './map3d.js';
+import { initWeatherEffects, updateWeatherState, toggleWindOverlay, toggleWeatherFx, setWeatherShockBox, setWeatherBoundaries } from './weather-effects.js';
 import { buildLandMask, buildStateAssignments, flatIndexStep } from './grid.js';
-import { loadShockPresets, snapToGrid, buildPerturbationTensor, generateRandomJudgeShock } from './shock.js';
+import { loadShockPresets, snapToGrid, buildPerturbationTensor, generateRandomJudgeShock, checkEdgeBandOverlap } from './shock.js';
 import { computeDifference, analyzeCausality } from './analysis.js';
 import { computeBlurMetrics } from './blur.js';
 import { computeImpacts } from './impact.js';
@@ -56,8 +56,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     store.set('dayOfYear', 196); // mid-July monsoon
     store.set('doySinCos', computeDoySinCos(196));
     store.set('selectedChannel', 't2m');
-    store.set('viewMode', 'difference'); // default to multiverse difference
-    store.set('isFlat', false);
+    store.set('viewMode', 'normal'); // open on real model output; Difference is blank until a shock is applied
+    store.set('isFlat', true); // default to 2D flat for clear top-down view
     store.set('windEnabled', false);
 
     // Initialize map
@@ -69,9 +69,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       onCellHover: handleCellHover
     });
 
-    // Initialize wind overlay
+    // Initialize wind and atmospheric weather overlay
     const windCanvas = document.getElementById('wind-canvas');
-    initWind(windCanvas, mapInstance);
+    initWeatherEffects(windCanvas, mapInstance);
+    toggleWindOverlay(true);
 
     // Load boundaries & land mask
     loadBoundariesAndMask();
@@ -84,8 +85,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupUIEvents();
     setupHealthListener();
 
-    // Load initial mock or default state
-    await loadInitialPreset('monsoon_july');
+    // Starting weather: real days in live mode (dashboard/presets/), synthetic in mock mode
+    const firstScenario = await setupScenarioSelect();
+    await loadInitialPreset(firstScenario);
 
     // Run first baseline simulation
     document.getElementById('btn-run').click();
@@ -108,6 +110,7 @@ async function loadBoundariesAndMask() {
       const statesGeoJSON = await stRes.json();
 
       setBoundaries(indiaGeoJSON, statesGeoJSON);
+      setWeatherBoundaries(indiaGeoJSON, statesGeoJSON);
       landMask = buildLandMask(indiaGeoJSON);
       stateAssignments = buildStateAssignments(statesGeoJSON);
     }
@@ -118,11 +121,37 @@ async function loadBoundariesAndMask() {
 
 async function loadInitialPreset(id) {
   const data = await api.getPreset(id);
-  if (data) {
-    store.set('initStates', data.init_states);
-    store.set('doySinCos', data.doy_sincos);
-    updateDoyDisplay(store.get('dayOfYear'));
+  if (!data) {
+    showErrorNotification(config.mode === 'live'
+      ? `No starting state "${id}". Create them with: python tools/make_presets.py --data data/india_climate_train.nc`
+      : `Mock preset "${id}" not found.`);
+    return false;
   }
+  store.set('initStates', data.init_states);
+  store.set('doySinCos', data.doy_sincos);
+  if (Number.isFinite(data.doy)) store.set('dayOfYear', data.doy);
+  if (data.last_input_day || data.date) store.set('scenarioDate', data.last_input_day || data.date);
+  else store.set('scenarioDate', null);
+  updateDoyDisplay(store.get('dayOfYear'), store.get('scenarioDate'));
+  const note = document.getElementById('val-scenario-note');
+  if (note) note.textContent = data.description || '';
+  return true;
+}
+
+async function setupScenarioSelect() {
+  const sel = document.getElementById('select-scenario');
+  const list = await api.getPresets();
+  sel.innerHTML = '';
+  list.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.label;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', async (e) => {
+    if (await loadInitialPreset(e.target.value)) document.getElementById('btn-run').click();
+  });
+  return list.length ? list[0].id : 'monsoon_july';
 }
 
 function setupHealthListener() {
@@ -205,8 +234,25 @@ function setupUIEvents() {
   document.getElementById('toggle-wind').addEventListener('change', (e) => {
     const on = e.target.checked;
     store.set('windEnabled', on);
-    toggleWind(on);
+    toggleWindOverlay(on);
   });
+
+  // Satellite view toggle
+  const satToggle = document.getElementById('toggle-satellite');
+  if (satToggle) {
+    if (satToggle.checked) toggleSatellite(true);
+    satToggle.addEventListener('change', (e) => {
+      toggleSatellite(e.target.checked);
+    });
+  }
+
+  // Weather atmospheric FX toggle
+  const fxToggle = document.getElementById('toggle-weather-fx');
+  if (fxToggle) {
+    fxToggle.addEventListener('change', (e) => {
+      toggleWeatherFx(e.target.checked);
+    });
+  }
 
   // Reset view
   document.getElementById('btn-reset-view').addEventListener('click', resetView);
@@ -309,9 +355,15 @@ function setupUIEvents() {
   });
 }
 
-function updateDoyDisplay(doy) {
+function updateDoyDisplay(doy, dateStr = null) {
   const lbl = document.getElementById('val-doy');
-  if (lbl) lbl.textContent = formatDoy(doy);
+  if (!lbl) return;
+  const doyText = formatDoy(doy);
+  if (dateStr) {
+    lbl.textContent = `${dateStr} • ${doyText}`;
+  } else {
+    lbl.textContent = doyText;
+  }
 }
 
 function populatePresetsDropdown(presets) {
@@ -380,6 +432,7 @@ function handleCustomShockInput() {
 function applyCustomShock(shockDef) {
   store.set('shock', shockDef);
   setShockBox(shockDef.box);
+  setWeatherShockBox(shockDef.box);
   updateScenarioSummary();
 
   // Edge band warning check
@@ -595,15 +648,21 @@ function updateDisplay() {
       isFlat
     });
 
-    // Feed wind layer
-    if (store.get('windEnabled')) {
-      setWindData(buffer, step);
-    }
+    // Feed wind and atmospheric effects
+    updateWeatherState({
+      buffer,
+      step,
+      channelKey: chKey,
+      mode
+    });
 
     // Update legend
     const legendContainer = document.getElementById('legend-container');
     const chMeta = channelByKey(chKey);
-    renderLegend(legendContainer, chKey, isDiff, chMeta ? chMeta.defaultRange : [0, 1]);
+    const legendRange = isDiff
+      ? (DIFFERENCE_RANGES[chKey] || [-5, 5])
+      : (chMeta ? chMeta.defaultRange : [0, 1]);
+    renderLegend(legendContainer, chKey, isDiff, legendRange);
   }
 }
 

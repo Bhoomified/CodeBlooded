@@ -181,12 +181,12 @@ export function health() {
   return enqueue(async () => {
     if (faults.serverDown) throw new Error('Mock server is down (fault injected)');
     if (faults.healthLoading) {
-      return { status: 'loading', model_name: 'mock-gencast-v0', reason: faults.healthLoadingReason };
+      return { status: 'loading', model_name: 'mock-engine (not the model)', reason: faults.healthLoadingReason };
     }
     if (faults.healthError) {
-      return { status: 'error', model_name: 'mock-gencast-v0', reason: faults.healthErrorReason };
+      return { status: 'error', model_name: 'mock-engine (not the model)', reason: faults.healthErrorReason };
     }
-    return { status: 'ready', model_name: 'mock-gencast-v0' };
+    return { status: 'ready', model_name: 'mock-engine (not the model)' };
   });
 }
 

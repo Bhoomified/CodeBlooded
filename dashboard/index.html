@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" href="data:,">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Forecastrophe // Climate Digital Twin of India</title>
@@ -56,7 +57,13 @@
         <div class="panel__header">Scenario Parameters</div>
         <div class="panel__body">
           <div style="margin-bottom:12px;">
-            <label class="text-label">Base Climatology (DOY)</label>
+            <label class="text-label" for="select-scenario">Starting Weather (real days)</label>
+            <select id="select-scenario" class="select" style="width:100%;margin-top:2px;"></select>
+            <div id="val-scenario-note" class="text-mono" style="font-size:10px;color:var(--text-secondary);margin-top:2px;"></div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <label class="text-label">Start Day of Year (DOY)</label>
             <div id="val-doy" class="text-mono" style="font-size:12px;color:var(--text-primary);margin-top:2px;">15 Jul (DOY 196)</div>
           </div>
 
@@ -156,15 +163,17 @@
         <div style="border-left:1px solid var(--border);padding-left:12px;">
           <label class="text-label" style="display:block;">Multiverse Branch</label>
           <div style="display:flex;gap:8px;margin-top:4px;font-size:11px;" class="text-mono">
-            <label><input type="radio" name="view-mode" value="normal"> Prime</label>
+            <label><input type="radio" name="view-mode" value="normal" checked> Prime</label>
             <label><input type="radio" name="view-mode" value="shocked"> Shocked</label>
-            <label><input type="radio" name="view-mode" value="difference" checked> Difference</label>
+            <label><input type="radio" name="view-mode" value="difference"> Difference</label>
           </div>
         </div>
 
-        <div style="border-left:1px solid var(--border);padding-left:12px;display:flex;gap:8px;align-items:center;">
-          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-flat"> 2D Flat</label>
-          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-wind"> Wind</label>
+        <div style="border-left:1px solid var(--border);padding-left:12px;display:flex;gap:10px;align-items:center;">
+          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-satellite"> 🛰️ Satellite</label>
+          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-weather-fx" checked> 🌦️ FX</label>
+          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-flat" checked> 2D Flat</label>
+          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-wind" checked> Wind</label>
           <button id="btn-reset-view" class="btn btn--ghost btn--sm">Reset Camera</button>
         </div>
       </div>

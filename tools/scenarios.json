@@ -1,0 +1,47 @@
+{
+  "_doc": "Dashboard starting states: real days from 2020-2021 (held out from training). 'last_input_day' is the 3rd input day.",
+  "scenarios": [
+    {
+      "id": "monsoon_july",
+      "label": "Active monsoon, mid-July 2021",
+      "last_input_day": "2021-07-15",
+      "description": "Peak monsoon: a good default for shock experiments."
+    },
+    {
+      "id": "monsoon_onset",
+      "label": "Monsoon onset, early June 2020",
+      "last_input_day": "2020-06-01",
+      "description": "Around the monsoon's arrival over Kerala."
+    },
+    {
+      "id": "heavy_rain",
+      "label": "Heavy rain, late July 2021",
+      "last_input_day": "2021-07-21",
+      "description": "Very wet spell over the west coast and central India."
+    },
+    {
+      "id": "heatwave",
+      "label": "Pre-monsoon heat, late May 2020",
+      "last_input_day": "2020-05-24",
+      "description": "Hot, dry north-west India: watch the rain checks on dry days."
+    },
+    {
+      "id": "cyclone_bay",
+      "label": "Bay of Bengal cyclone, May 2020",
+      "last_input_day": "2020-05-17",
+      "description": "Cyclone Amphan forming over the Bay of Bengal."
+    },
+    {
+      "id": "cyclone_arabian",
+      "label": "Arabian Sea cyclone, May 2021",
+      "last_input_day": "2021-05-14",
+      "description": "Cyclone Tauktae moving up the west coast."
+    },
+    {
+      "id": "winter_jan",
+      "label": "Winter, January 2021",
+      "last_input_day": "2021-01-10",
+      "description": "Cool, mostly dry season over the plains."
+    }
+  ]
+}

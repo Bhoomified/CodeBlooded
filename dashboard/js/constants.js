@@ -114,6 +114,17 @@ export const DERIVED_CHANNELS = Object.freeze([
   },
 ]);
 
+/** Difference (anomaly) display ranges for Multiverse Difference view. */
+export const DIFFERENCE_RANGES = Object.freeze({
+  t2m: [-5, 5],            // ±5 K
+  tp: [-30, 30],           // ±30 mm/day
+  u10: [-10, 10],          // ±10 m/s
+  v10: [-10, 10],          // ±10 m/s
+  msl: [-1500, 1500],      // ±15 hPa (±1500 Pa)
+  tcwv: [-20, 20],         // ±20 kg/m²
+  wind_speed: [-10, 10],   // ±10 m/s
+});
+
 /** Look up a channel by key (returns wire channel or derived). */
 export function channelByKey(key) {
   return CHANNELS.find(c => c.key === key) ||
@@ -193,10 +204,10 @@ export const ENSEMBLE_MEMBERS = 5;
 
 export const MAP_DEFAULTS = Object.freeze({
   CENTER: [82.5, 22.0],   // [lon, lat] centre of India
-  ZOOM: 4.2,
-  PITCH: 45,
+  ZOOM: 4.5,
+  PITCH: 0,               // Top-down 90 degree perpendicular view (0 pitch in MapLibre)
   BEARING: 0,
-  MAX_ZOOM: 8,
+  MAX_ZOOM: 9,
   MIN_ZOOM: 3,
 });
 
