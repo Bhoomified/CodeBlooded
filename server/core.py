@@ -203,6 +203,18 @@ class Simulator:
         except Exception as e:
             self.qm = RainQM(None, self.land)
             self._event(f"rain equaliser off ({type(e).__name__})")
+        # stage 4b: climatology pull. Long-lead forecasts lean towards the seasonal average (strength per lead and
+        # channel fitted on 2019). Seasonal average = day-of-year harmonics, computed from the angle, never a date.
+        self.pull = None
+        try:
+            coef = np.load(self.dir / "clim_harmonics.npy").astype("f4")   # [1 + 2H, 6, 32, 36]
+            lam = np.load(self.dir / "clim_pull.npy").astype("f4")         # [leads, 6], 0 = off
+            assert coef.shape[1:] == (NC, NLAT, NLON) and lam.shape[1] == NC and (coef.shape[0] - 1) % 2 == 0
+            self.pull = (coef, np.clip(lam, 0.0, 1.0))
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            self._event(f"climatology pull off ({type(e).__name__})")
         mode = "cnn" if self.net is not None else ("ridge" if self.ridge_W is not None else "persistence")
         self.model_name = meta.get("name", "monsoon") + f" [{mode}]"
 
@@ -257,9 +269,16 @@ class Simulator:
         nxt[TP] = out[TP]
         return nxt
 
-    def simulate(self, init, doy_sincos, steps, perturbation):
+    def clim_at(self, theta: float) -> np.ndarray:
+        coef = self.pull[0]
+        h = (coef.shape[0] - 1) // 2
+        b = [1.0] + [f(k * theta) for k in range(1, h + 1) for f in (math.sin, math.cos)]
+        return np.tensordot(np.asarray(b, "f4"), coef, 1)
+
+    def simulate(self, init, doy_sincos, steps, perturbation, _pull=True):
         t0 = time.perf_counter()
         x, theta, steps, p, notes = self.guard(init, doy_sincos, steps, perturbation)
+        theta0 = theta
         if p is not None:  # stage 2: shock injector (a zero shock is an exact no-op)
             x = x.copy()
             x[-1] = x[-1] + p
@@ -303,6 +322,15 @@ class Simulator:
             z3 = np.concatenate([z3[1:], self.norm.fwd(fb[None])], 0)  # dynamics never see the equaliser
         for n in notes + self.events[-3:]:
             diag.append({"step": None, "stage": "service", "model": None, "event": "note", "detail": n})
+        if _pull and self.pull is not None:
+            # The pull is computed from the unshocked run and added to this run, so a shock's response
+            # (shocked minus normal) is exactly the model's own; with no shock it is a plain pull.
+            base = out if (p is None or not np.any(p)) else self.simulate(init, doy_sincos, steps, None, _pull=False)[0]
+            lam = self.pull[1]
+            for k in range(steps):
+                corr = lam[min(k, len(lam) - 1)][:, None, None] * (self.clim_at(theta0 + 2 * math.pi * (k + 1) / 365.0) - base[k])
+                out[k] = np.clip(out[k] + corr, ENV_LO[:, None, None], ENV_HI[:, None, None])
+            diag.append({"step": None, "stage": "service", "model": None, "event": "note", "detail": "climatology pull applied"})
         return out, (time.perf_counter() - t0) * 1000.0, diag
 
 
