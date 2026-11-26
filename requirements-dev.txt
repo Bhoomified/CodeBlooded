@@ -1,4 +1,4 @@
-# Training / evaluation only (never imported by serve.py or server/)
+# Training, evaluation and tests (never imported by serve.py or server/)
 -r requirements.txt
 xarray
 netCDF4
