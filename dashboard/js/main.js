@@ -42,7 +42,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const badge = document.getElementById('badge-mode');
     if (config.mode === 'mock') {
       badge.style.display = 'inline-flex';
-      badge.textContent = 'MOCK ENGINE - NOT MODEL OUTPUT';
+      badge.textContent = 'MOCK ENGINE';
+      badge.title = 'Client-Side Physics Emulator - Not Live Torch Model Output';
     } else {
       badge.style.display = 'none';
     }
@@ -254,8 +255,33 @@ function setupUIEvents() {
     });
   }
 
-  // Reset view
-  document.getElementById('btn-reset-view').addEventListener('click', resetView);
+  // Fullscreen map toggle
+  document.getElementById('btn-fullscreen-map')?.addEventListener('click', () => {
+    document.body.classList.toggle('fullscreen-map');
+    const isFull = document.body.classList.contains('fullscreen-map');
+    const btn = document.getElementById('btn-fullscreen-map');
+    btn.textContent = isFull ? 'Exit Fullscreen' : 'Fullscreen Map';
+    setTimeout(() => mapInstance?.resize(), 200);
+  });
+
+  // Toggle sidebars (Panels)
+  document.getElementById('btn-toggle-panels')?.addEventListener('click', () => {
+    document.body.classList.toggle('panels-hidden');
+    setTimeout(() => mapInstance?.resize(), 200);
+  });
+
+  // Collapsible Accordion Panels in Left Rail
+  document.querySelectorAll('.panel .panel__header').forEach(header => {
+    header.addEventListener('click', () => {
+      const panel = header.closest('.panel');
+      if (panel) {
+        panel.classList.toggle('panel--collapsed');
+      }
+    });
+  });
+
+  // Navigation search bar & settings palette
+  setupNavigationSearch();
 
   // Preset selector
   document.getElementById('select-preset').addEventListener('change', (e) => {
@@ -351,6 +377,93 @@ function setupUIEvents() {
     } else if (e.key.toLowerCase() === 'p') {
       document.body.classList.toggle('presentation');
       setTimeout(() => mapInstance.resize(), 200);
+    }
+  });
+}
+
+function setupNavigationSearch() {
+  const input = document.getElementById('nav-search-input');
+  const dropdown = document.getElementById('nav-search-results');
+  if (!input || !dropdown) return;
+
+  // Search registry of quick options, settings, variables, and presets
+  const searchableActions = [
+    { title: 'Variable: 2m Temperature (K)', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 't2m'; store.set('selectedChannel', 't2m'); updateDisplay(); } },
+    { title: 'Variable: Precipitation / Rain (mm/day)', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 'tp'; store.set('selectedChannel', 'tp'); updateDisplay(); } },
+    { title: 'Variable: Wind Speed (m/s)', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 'wind_speed'; store.set('selectedChannel', 'wind_speed'); updateDisplay(); } },
+    { title: 'Variable: Pressure (Pa)', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 'msl'; store.set('selectedChannel', 'msl'); updateDisplay(); } },
+    { title: 'Variable: Water Vapour / Moisture', cat: 'Metric', action: () => { document.getElementById('select-channel').value = 'tcwv'; store.set('selectedChannel', 'tcwv'); updateDisplay(); } },
+    { title: 'Multiverse Branch: Prime (Baseline)', cat: 'Branch', action: () => { document.querySelector('input[name="view-mode"][value="normal"]').click(); } },
+    { title: 'Multiverse Branch: Shocked Run', cat: 'Branch', action: () => { document.querySelector('input[name="view-mode"][value="shocked"]').click(); } },
+    { title: 'Multiverse Branch: Difference Mode', cat: 'Branch', action: () => { document.querySelector('input[name="view-mode"][value="difference"]').click(); } },
+    { title: 'Toggle Satellite Basemap', cat: 'Layer', action: () => { const cb = document.getElementById('toggle-satellite'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); } },
+    { title: 'Toggle Atmospheric Weather FX', cat: 'Layer', action: () => { const cb = document.getElementById('toggle-weather-fx'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); } },
+    { title: 'Toggle 2D Flat / 3D Extrusion', cat: 'Layer', action: () => { const cb = document.getElementById('toggle-flat'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); } },
+    { title: 'Toggle Wind Streamlines', cat: 'Layer', action: () => { const cb = document.getElementById('toggle-wind'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); } },
+    { title: 'Reset Camera View', cat: 'View', action: () => resetView() },
+    { title: 'Fullscreen Map (Hide All Panels)', cat: 'View', action: () => document.getElementById('btn-fullscreen-map')?.click() },
+    { title: 'Run Full Simulation', cat: 'Run', action: () => document.getElementById('btn-run')?.click() },
+    { title: 'Apply Random Judge Shock', cat: 'Shock', action: () => document.getElementById('btn-judge-shock')?.click() },
+    { title: 'Apply Preset: Warm Bay of Bengal', cat: 'Preset', action: () => { const p = document.getElementById('select-preset'); p.value = 'warm_ocean'; p.dispatchEvent(new Event('change')); } },
+    { title: 'Apply Preset: Monsoon Stall', cat: 'Preset', action: () => { const p = document.getElementById('select-preset'); p.value = 'monsoon_stall'; p.dispatchEvent(new Event('change')); } },
+    { title: 'Apply Preset: Null Test (Control)', cat: 'Preset', action: () => document.getElementById('btn-null-shock')?.click() },
+    { title: 'Open Sectoral Impact Tab', cat: 'Tab', action: () => document.querySelector('.tab-bar__tab[data-tab="impact"]')?.click() },
+    { title: 'Open Causality Radius Tab', cat: 'Tab', action: () => document.querySelector('.tab-bar__tab[data-tab="radius"]')?.click() },
+    { title: 'Open Diagnostics Tab', cat: 'Tab', action: () => document.querySelector('.tab-bar__tab[data-tab="diag"]')?.click() },
+    { title: 'Run Physics Verification Suite', cat: 'Test', action: () => { document.querySelector('.tab-bar__tab[data-tab="battery"]')?.click(); document.getElementById('btn-run-battery')?.click(); } }
+  ];
+
+  function renderResults(q) {
+    dropdown.innerHTML = '';
+    const query = q.toLowerCase().trim();
+    if (!query) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
+    const matches = searchableActions.filter(item =>
+      item.title.toLowerCase().includes(query) || item.cat.toLowerCase().includes(query)
+    );
+
+    if (matches.length === 0) {
+      dropdown.innerHTML = '<div class="search-item" style="color:var(--text-dim);cursor:default;">No matching setting or action found.</div>';
+      dropdown.style.display = 'block';
+      return;
+    }
+
+    matches.slice(0, 8).forEach(match => {
+      const el = document.createElement('div');
+      el.className = 'search-item';
+      el.innerHTML = `<span>${match.title}</span><span class="search-item-cat">${match.cat}</span>`;
+      el.addEventListener('click', () => {
+        dropdown.style.display = 'none';
+        input.value = '';
+        input.blur();
+        match.action();
+      });
+      dropdown.appendChild(el);
+    });
+    dropdown.style.display = 'block';
+  }
+
+  input.addEventListener('input', (e) => renderResults(e.target.value));
+  input.addEventListener('focus', (e) => renderResults(e.target.value));
+
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  // Shortcut "/" or Ctrl+K / Cmd+K opens search
+  window.addEventListener('keydown', (e) => {
+    if ((e.key === '/' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) && document.activeElement !== input) {
+      e.preventDefault();
+      input.focus();
+      input.select();
+    } else if (e.key === 'Escape' && document.activeElement === input) {
+      dropdown.style.display = 'none';
+      input.blur();
     }
   });
 }

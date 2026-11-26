@@ -1,188 +1,308 @@
 /* ==========================================================================
-   Forecastrophe — Layout
-   Climate Digital-Twin Dashboard for India
+   Forecastrophe — Layout (Glass Cockpit Shell)
    --------------------------------------------------------------------------
-   Shell structure: header, left rail, map area, right inspector, bottom bar.
-   Presentation mode and responsive breakpoints.
+   Full-bleed map is the hero; frosted glass controls, panels & dock float.
+   Robust, overflow-safe, non-overlapping design.
    ========================================================================== */
 
+body {
+  background-color: var(--bg);
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-ui);
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Subtle background noise texture simulation */
+body::after {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+  background-size: 28px 28px;
+  opacity: 0.3;
+  z-index: var(--z-canvas);
+}
 
 /* --------------------------------------------------------------------------
-   App Header — 48 px top bar
+   Floating Pill App Header (3-Zone Flex, Inset Glass Cockpit Top Bar)
    -------------------------------------------------------------------------- */
 
 #app-header {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: 48px;
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  right: 18px;
+  height: 52px;
   padding: 0 var(--sp-4);
+  background: var(--glass-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  z-index: var(--z-topbar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--sp-3);
-  border-bottom: 1px solid var(--border);
-  background-color: var(--panel);
-  z-index: var(--z-panel);
+  flex-wrap: nowrap;
+  transition: transform var(--ease-spring), opacity var(--ease-out);
+}
+
+.header-zone-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.header-zone-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  max-width: 440px;
+  min-width: 160px;
+}
+
+.header-zone-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
 }
 
 .wordmark {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
   user-select: none;
+  white-space: nowrap;
 }
 
+.brand-logo-img {
+  height: 32px;
+  width: auto;
+  max-width: 175px;
+  object-fit: contain;
+  background: transparent;
+  padding: 0;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
 
 /* --------------------------------------------------------------------------
-   App Main — fills viewport between header and bottom bar
+   App Main — Full-bleed stage for map hero
    -------------------------------------------------------------------------- */
 
 #app-main {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   flex-direction: row;
-  height: calc(100vh - 48px - 48px);   /* viewport minus header minus bottom bar */
   overflow: hidden;
 }
 
-
 /* --------------------------------------------------------------------------
-   Left Rail — 280 px fixed, scrollable panel
-   -------------------------------------------------------------------------- */
-
-#left-rail {
-  width: 280px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  border-right: 1px solid var(--border);
-  background-color: var(--panel);
-  padding: var(--sp-3);
-  z-index: var(--z-panel);
-}
-
-/* Consecutive panels inside the rails get vertical breathing room */
-#left-rail .panel + .panel,
-#right-inspector .panel + .panel {
-  margin-top: var(--sp-2);
-}
-
-
-/* --------------------------------------------------------------------------
-   Map Container — fills remaining horizontal space
+   Full-Bleed Map Canvas Container
    -------------------------------------------------------------------------- */
 
 #map-container {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  min-width: 0;                        /* prevent flex blowout */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: var(--z-map);
 }
 
 #map {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
 }
 
 #wind-canvas {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  z-index: var(--z-canvas);
 }
 
+/* --------------------------------------------------------------------------
+   Floating Left Rail (Scenario Parameters & Shock Painter)
+   -------------------------------------------------------------------------- */
+
+#left-rail {
+  position: absolute;
+  top: 78px;
+  left: 18px;
+  bottom: 76px;
+  width: clamp(280px, 22vw, 340px);
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 4px 12px 0;
+  background: transparent;
+  border: none;
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  transition: transform var(--ease-spring), opacity var(--ease-out);
+}
+
+#left-rail::-webkit-scrollbar {
+  width: 4px;
+}
+#left-rail::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-full);
+}
 
 /* --------------------------------------------------------------------------
-   Right Inspector — 320 px fixed, tabbed panel
+   Floating Right Inspector (Tabs & Real-time analytics)
    -------------------------------------------------------------------------- */
 
 #right-inspector {
-  width: 320px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  border-left: 1px solid var(--border);
-  background-color: var(--panel);
+  position: absolute;
+  top: 78px;
+  right: 18px;
+  bottom: 76px;
+  width: clamp(300px, 24vw, 360px);
+  max-height: calc(100vh - 160px);
+  background: var(--glass-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  z-index: var(--z-panel);
   display: flex;
   flex-direction: column;
-  z-index: var(--z-panel);
+  overflow: hidden;
+  transition: transform var(--ease-spring), opacity var(--ease-out);
 }
 
+#right-inspector .tab-pane {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
 
 /* --------------------------------------------------------------------------
-   Bottom Bar — 48 px status / toolbar strip
+   Floating Pill Bottom Timeline Bar
    -------------------------------------------------------------------------- */
 
 #bottom-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(920px, calc(100vw - 36px));
+  padding: 8px 18px;
+  background: var(--glass-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  z-index: var(--z-dock);
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: 48px;
-  padding: 0 var(--sp-4);
-  gap: var(--sp-3);
-  border-top: 1px solid var(--border);
-  background-color: var(--panel);
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 6px;
+  transition: all var(--ease-out);
 }
 
+.bottom-bar-main-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.bottom-bar-hints-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+
+@media (max-width: 1200px) {
+  .bottom-bar-hints-row {
+    display: none;
+  }
+}
 
 /* --------------------------------------------------------------------------
-   Presentation Mode
-   --------------------------------------------------------------------------
-   Body receives .presentation — rails hide, map expands, bottom bar shrinks.
+   Panel Collapse & Fullscreen States
    -------------------------------------------------------------------------- */
+
+body.panels-hidden #left-rail,
+body.fullscreen-map #left-rail {
+  transform: translateX(-380px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.panels-hidden #right-inspector,
+body.fullscreen-map #right-inspector {
+  transform: translateX(400px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.fullscreen-map #app-header {
+  transform: translateY(-80px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.fullscreen-map #bottom-bar {
+  bottom: 8px;
+}
+
+/* Responsive collapsing for Export Group */
+@media (max-width: 1400px) {
+  .btn-export-label {
+    display: none;
+  }
+}
+
+/* KBD shortcut chip */
+.kbd-chip {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
 
 .presentation #left-rail,
 .presentation #right-inspector {
   display: none;
-}
-
-.presentation #app-main {
-  height: calc(100vh - 48px - 32px);   /* recalc for smaller bottom bar */
-}
-
-.presentation #bottom-bar {
-  height: 32px;
-  padding: 0 var(--sp-3);
-  gap: var(--sp-2);
-  font-size: var(--text-xs);
-}
-
-
-/* --------------------------------------------------------------------------
-   Responsive — ≤ 1200 px: inspector overlays
-   -------------------------------------------------------------------------- */
-
-@media (max-width: 1200px) {
-  #right-inspector {
-    position: fixed;
-    top: 48px;                         /* below header */
-    right: 0;
-    bottom: 48px;                      /* above bottom bar */
-    width: 320px;
-    z-index: calc(var(--z-panel) + 5);
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.35);
-  }
-}
-
-
-/* --------------------------------------------------------------------------
-   Responsive — ≤ 900 px: left rail collapses to icon strip
-   -------------------------------------------------------------------------- */
-
-@media (max-width: 900px) {
-  #left-rail {
-    width: 48px;
-    padding: var(--sp-2) var(--sp-1);
-    overflow-x: hidden;
-  }
-
-  /* Hide text content, show only icons when collapsed */
-  #left-rail .panel__header span,
-  #left-rail .panel__body {
-    display: none;
-  }
 }
