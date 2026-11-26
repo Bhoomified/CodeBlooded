@@ -1,0 +1,308 @@
+/* ==========================================================================
+   Forecastrophe — Layout (Glass Cockpit Shell)
+   --------------------------------------------------------------------------
+   Full-bleed map is the hero; frosted glass controls, panels & dock float.
+   Robust, overflow-safe, non-overlapping design.
+   ========================================================================== */
+
+body {
+  background-color: var(--bg);
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-ui);
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Subtle background noise texture simulation */
+body::after {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+  background-size: 28px 28px;
+  opacity: 0.3;
+  z-index: var(--z-canvas);
+}
+
+/* --------------------------------------------------------------------------
+   Floating Pill App Header (3-Zone Flex, Inset Glass Cockpit Top Bar)
+   -------------------------------------------------------------------------- */
+
+#app-header {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  right: 18px;
+  height: 52px;
+  padding: 0 var(--sp-4);
+  background: var(--glass-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  z-index: var(--z-topbar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: nowrap;
+  transition: transform var(--ease-spring), opacity var(--ease-out);
+}
+
+.header-zone-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.header-zone-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  max-width: 440px;
+  min-width: 160px;
+}
+
+.header-zone-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.brand-logo-img {
+  height: 32px;
+  width: auto;
+  max-width: 175px;
+  object-fit: contain;
+  background: transparent;
+  padding: 0;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+/* --------------------------------------------------------------------------
+   App Main — Full-bleed stage for map hero
+   -------------------------------------------------------------------------- */
+
+#app-main {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Full-Bleed Map Canvas Container
+   -------------------------------------------------------------------------- */
+
+#map-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: var(--z-map);
+}
+
+#map {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#wind-canvas {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: var(--z-canvas);
+}
+
+/* --------------------------------------------------------------------------
+   Floating Left Rail (Scenario Parameters & Shock Painter)
+   -------------------------------------------------------------------------- */
+
+#left-rail {
+  position: absolute;
+  top: 78px;
+  left: 18px;
+  bottom: 76px;
+  width: clamp(280px, 22vw, 340px);
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 4px 12px 0;
+  background: transparent;
+  border: none;
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  transition: transform var(--ease-spring), opacity var(--ease-out);
+}
+
+#left-rail::-webkit-scrollbar {
+  width: 4px;
+}
+#left-rail::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-full);
+}
+
+/* --------------------------------------------------------------------------
+   Floating Right Inspector (Tabs & Real-time analytics)
+   -------------------------------------------------------------------------- */
+
+#right-inspector {
+  position: absolute;
+  top: 78px;
+  right: 18px;
+  bottom: 76px;
+  width: clamp(300px, 24vw, 360px);
+  max-height: calc(100vh - 160px);
+  background: var(--glass-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform var(--ease-spring), opacity var(--ease-out);
+}
+
+#right-inspector .tab-pane {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Floating Pill Bottom Timeline Bar
+   -------------------------------------------------------------------------- */
+
+#bottom-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(920px, calc(100vw - 36px));
+  padding: 8px 18px;
+  background: var(--glass-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  z-index: var(--z-dock);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all var(--ease-out);
+}
+
+.bottom-bar-main-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.bottom-bar-hints-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  opacity: 0.75;
+}
+
+@media (max-width: 1200px) {
+  .bottom-bar-hints-row {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Panel Collapse & Fullscreen States
+   -------------------------------------------------------------------------- */
+
+body.panels-hidden #left-rail,
+body.fullscreen-map #left-rail {
+  transform: translateX(-380px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.panels-hidden #right-inspector,
+body.fullscreen-map #right-inspector {
+  transform: translateX(400px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.fullscreen-map #app-header {
+  transform: translateY(-80px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.fullscreen-map #bottom-bar {
+  bottom: 8px;
+}
+
+/* Responsive collapsing for Export Group */
+@media (max-width: 1400px) {
+  .btn-export-label {
+    display: none;
+  }
+}
+
+/* KBD shortcut chip */
+.kbd-chip {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.presentation #left-rail,
+.presentation #right-inspector {
+  display: none;
+}
