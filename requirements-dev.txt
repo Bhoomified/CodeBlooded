@@ -1,0 +1,10 @@
+# Training / evaluation only (never imported by serve.py or server/)
+-r requirements.txt
+xarray
+netCDF4
+scipy
+pandas
+requests
+pytest
+httpx
+monsoon-r1-kit @ git+https://github.com/OfficialAbhinavSingh/yug-monsoon-kit@v1.0.0

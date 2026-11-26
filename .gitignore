@@ -1,8 +1,14 @@
 .venv/
+venv/
 __pycache__/
+*.pyc
 *.nc
 *.grib
+*.grib2
 *.zarr
 data/
 runs/
 *.ipynb_checkpoints
+*.log
+.env
+.vscode/

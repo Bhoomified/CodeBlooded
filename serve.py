@@ -1,17 +1,27 @@
-"""Starter server for Round 1. This is API plumbing only: `simulate()` below is a placeholder (it repeats the last day).
-Replace it with YOUR model. The judge runs this exact file in an offline container:  python serve.py --port 8000
-
-Rules: listen on 0.0.0.0 (not 127.0.0.1), load weights from files next to this one (there is no internet), keep
-the model loaded in memory (a 10-step rollout must return in under 5 s), return finite numbers in physical units.
+"""Multiverse of Monsoon - inference server (Round 1 contract).
+The judge runs this exact file offline:  python serve.py --port 8000
+Rules: listen on 0.0.0.0, load weights once at startup from files inside the repo, return finite numbers in
+physical units, answer a 10-step rollout in under 5 s.
 """
 import argparse
+import os
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # works from any folder / launcher
+
 import numpy as np
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from server.model import MODEL_NAME, load_model, simulate
 
 app = FastAPI()
-MODEL_NAME = "placeholder-persistence"
-# TODO load your weights here, once, at import time, e.g. model = torch.load(Path(__file__).parent / "weights.pt")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])  # lets the dashboard call us
+MODEL = load_model()  # loaded once, at import time, before the first request
 
 
 def _arr(x):
@@ -22,29 +32,28 @@ def _arr(x):
     return np.asarray(x, dtype="f4")
 
 
-def simulate(init_states: np.ndarray, doy_sincos, steps: int, perturbation) -> np.ndarray:
-    """init_states [3,6,32,36] physical units, oldest first. perturbation [6,32,36] delta or None.
-    Return [steps,6,32,36] physical units. doy_sincos = [sin, cos] of the day of year of init_states[-1]."""
-    last = init_states[-1].copy()
-    if perturbation is not None:
-        last = last + perturbation                     # the shock is added to the last input day before simulating
-    return np.repeat(last[None], steps, axis=0)        # PLACEHOLDER: replace with your model
-
-
 @app.post("/health")
+@app.get("/health")  # GET only for humans/browsers; the judge uses POST
 def health():
     return {"status": "ready", "model_name": MODEL_NAME}
 
 
 @app.post("/simulate")
 async def simulate_endpoint(request: Request):
-    import time
-    t0 = time.perf_counter(); body = await request.json()
-    init = _arr(body["init_states"]); pert = None if body.get("perturbation") is None else _arr(body["perturbation"])
-    out = simulate(init, body["doy_sincos"], int(body["steps"]), pert)
+    t0 = time.perf_counter()
+    try:
+        body = await request.json()
+        init = _arr(body["init_states"])
+        pert = None if body.get("perturbation") is None else _arr(body["perturbation"])
+        out = simulate(MODEL, init, body["doy_sincos"], int(body["steps"]), pert)
+    except (KeyError, ValueError, TypeError) as e:  # bad input -> clear 422, never a 500 crash
+        return JSONResponse({"error": str(e)[:300]}, status_code=422)
     return {"rollout": np.asarray(out, dtype="f4").tolist(), "inference_ms": (time.perf_counter() - t0) * 1000.0}
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("--port", type=int, default=8000)
-    uvicorn.run(app, host="0.0.0.0", port=ap.parse_args().port, log_level="warning")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--port", type=int, default=8000)
+    port = ap.parse_args().port
+    print(f"Model '{MODEL_NAME}' loaded. Serving on http://localhost:{port}  (Ctrl+C to stop)", flush=True)
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level=os.environ.get("LOG_LEVEL", "info"))

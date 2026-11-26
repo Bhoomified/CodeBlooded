@@ -1,0 +1,5 @@
+# Inference (all already present in the judge's sandbox)
+numpy
+torch
+fastapi
+uvicorn

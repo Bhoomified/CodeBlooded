@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Multiverse of Monsoon</title></head>
+<body>
+<h1>Multiverse of Monsoon</h1>
+<p>Model status: <b id="status">checking...</b></p>
+<script>
+// The dashboard only talks to the live model over HTTP. Open this file after starting serve.py.
+const API = "http://localhost:8000";
+fetch(API + "/health", {method: "POST"})
+  .then(r => r.json()).then(j => { document.getElementById("status").textContent = j.status + " (" + j.model_name + ")"; })
+  .catch(() => { document.getElementById("status").textContent = "model unavailable - start serve.py"; });
+</script>
+</body></html>
