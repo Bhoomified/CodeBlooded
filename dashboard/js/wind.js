@@ -96,9 +96,12 @@ function loop() {
     return;
   }
 
-  // Fading trail effect
-  ctx.fillStyle = 'rgba(24, 27, 32, 0.12)';
+  // Fading trail effect (fades old strands to transparent so the map underneath stays visible)
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
 
   ctx.strokeStyle = 'rgba(212, 154, 62, 0.55)'; // amber wind strands
   ctx.lineWidth = 1.2;

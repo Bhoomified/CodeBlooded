@@ -18,7 +18,7 @@ for name, min_bytes in REQUIRED.items():
         print(f"FAIL  {name}: missing"); ok = False; continue
     head = p.read_bytes()[:64]
     if head.startswith(b"version https://git-lfs"):
-        print(f"FAIL  {name}: is a Git LFS pointer, not the real file (run: git lfs pull)"); ok = False; continue
+        print(f"FAIL  {name}: is a Git LFS pointer, not the real file (get the real file: git lfs pull, or copy it from the trained bundle zip)"); ok = False; continue
     size = p.stat().st_size
     flag = "OK  " if size >= min_bytes else "FAIL"
     ok &= size >= min_bytes

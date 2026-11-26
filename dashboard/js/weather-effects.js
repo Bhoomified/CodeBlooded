@@ -245,32 +245,69 @@ function drawRing(ring) {
   }
 }
 
-/** Scan grid to find the exact bounding box of the shock or active localized extremes */
+/**
+ * Thresholds for drawing effects. Every effect is driven by the model output on screen:
+ * Prime/Shocked views use the forecast values, the Difference view uses the shock's change.
+ */
+const FX_ABS = { rain: 25.0, wind: 18.0, heat: 313.0 };   // mm/day, m/s, K
+const FX_DIFF = { rain: 5.0, wind: 3.0, heat: 1.0 };      // change caused by the shock
+
+function cellValues(r, c) {
+  const t2m = currentBuffer[flatIndexStep(currentStep, 0, r, c)] || 0;
+  const tp = currentBuffer[flatIndexStep(currentStep, 1, r, c)] || 0;
+  const u = currentBuffer[flatIndexStep(currentStep, 2, r, c)] || 0;
+  const v = currentBuffer[flatIndexStep(currentStep, 3, r, c)] || 0;
+  return { t2m, tp, u, v };
+}
+
+function flagsFor({ t2m, tp, u, v }) {
+  if (currentMode === 'difference') {
+    return {
+      heavyRain: tp > FX_DIFF.rain,
+      storm: Math.hypot(u, v) > FX_DIFF.wind,
+      heatwave: t2m > FX_DIFF.heat,
+    };
+  }
+  return {
+    heavyRain: tp > FX_ABS.rain,
+    storm: Math.hypot(u, v) > FX_ABS.wind,
+    heatwave: t2m > FX_ABS.heat,
+  };
+}
+
+/** Scan grid to find the shock box or localized extremes, with effects set from the data. */
 function findActiveWeatherZones() {
   activeShockZones = [];
 
-  // 1. If user set an explicit shock box, prioritize that section
+  // 1. If user set an explicit shock box, prioritize that section; effects come from its cells
   if (currentShockBox && currentShockBox.latMin !== undefined) {
-    activeShockZones.push({
+    const zone = {
       latMin: currentShockBox.latMin,
       latMax: currentShockBox.latMax,
       lonMin: currentShockBox.lonMin,
       lonMax: currentShockBox.lonMax,
-      isExplicitShock: true
-    });
+      isExplicitShock: true,
+      heavyRain: false, storm: false, heatwave: false
+    };
+    const r0 = latToRow(zone.latMin), r1 = latToRow(zone.latMax);
+    const c0 = lonToCol(zone.lonMin), c1 = lonToCol(zone.lonMax);
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const f = flagsFor(cellValues(r, c));
+        zone.heavyRain ||= f.heavyRain;
+        zone.storm ||= f.storm;
+        zone.heatwave ||= f.heatwave;
+      }
+    }
+    activeShockZones.push(zone);
     return;
   }
 
   // 2. Otherwise find localized hotspots/heavy rain patches (not the entire screen)
   for (let r = 0; r < GRID.ROWS; r += 3) {
     for (let c = 0; c < GRID.COLS; c += 3) {
-      const tp = currentBuffer[flatIndexStep(currentStep, 1, r, c)] || 0;
-      const t2m = currentBuffer[flatIndexStep(currentStep, 0, r, c)] || 300;
-      const u = currentBuffer[flatIndexStep(currentStep, 2, r, c)] || 0;
-      const v = currentBuffer[flatIndexStep(currentStep, 3, r, c)] || 0;
-      const ws = Math.sqrt(u * u + v * v);
-
-      if (tp > 25.0 || ws > 18.0 || t2m > 313.0) {
+      const f = flagsFor(cellValues(r, c));
+      if (f.heavyRain || f.storm || f.heatwave) {
         const lat = GRID.LAT_MIN + r;
         const lon = GRID.LON_MIN + c;
         activeShockZones.push({
@@ -278,9 +315,7 @@ function findActiveWeatherZones() {
           latMax: lat + 1.5,
           lonMin: lon - 1.5,
           lonMax: lon + 1.5,
-          heavyRain: tp > 25.0,
-          storm: ws > 18.0,
-          heatwave: t2m > 313.0
+          ...f
         });
         if (activeShockZones.length >= 3) return; // limit to small localized sections
       }
@@ -313,17 +348,18 @@ function renderLocalizedEffects() {
     ctx.rect(minX - 10, minY - 10, w + 20, h + 20);
     ctx.clip();
 
-    // 1. Localized Cloud Formation directly above the shock section
-    drawLocalizedCloud(minX, minY, w, h);
+    // Each effect is drawn only when the model output in this section calls for it
+    // 1. Localized Cloud Formation directly above the section (rain or strong wind)
+    if (zone.heavyRain || zone.storm) drawLocalizedCloud(minX, minY, w, h);
 
     // 2. Localized Falling Rain only within this box
-    drawLocalizedRain(minX, minY, w, h);
+    if (zone.heavyRain) drawLocalizedRain(minX, minY, w, h);
 
     // 3. Storm lightning flash inside this section
-    drawLocalizedStorm(minX, minY, w, h);
+    if (zone.storm) drawLocalizedStorm(minX, minY, w, h);
 
-    // 4. Solar heat pulse if temperature shock
-    drawLocalizedSunHeat(minX, minY, w, h);
+    // 4. Solar heat pulse where it is hot (or the shock warmed it)
+    if (zone.heatwave) drawLocalizedSunHeat(minX, minY, w, h);
 
     ctx.restore();
 

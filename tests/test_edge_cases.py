@@ -14,7 +14,11 @@ from server.core import Simulator, ENV_LO, ENV_HI, count_models
 from fastapi.testclient import TestClient
 
 DATA = os.environ.get("MONSOON_DATA", str(ROOT / "data" / "india_climate_train.nc"))
-STD = np.array(json.loads(Path(DATA).with_name("stats.json").read_text())["std"], "f4")
+STATS = Path(DATA).with_name("stats.json")
+if not (Path(DATA).exists() and STATS.exists()):
+    pytest.skip(f"Kit data missing: put india_climate_train.nc and stats.json in {Path(DATA).parent} "
+                "(kit release v1.0.0), or set MONSOON_DATA to the .nc path", allow_module_level=True)
+STD = np.array(json.loads(STATS.read_text())["std"], "f4")
 quality = pytest.mark.quality  # model-quality gates: expected to pass only with a fully trained bundle
 SC = [math.sin(2 * math.pi * 180 / 365), math.cos(2 * math.pi * 180 / 365)]
 

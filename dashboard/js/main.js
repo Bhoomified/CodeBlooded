@@ -11,9 +11,10 @@ import { computeDoySinCos, formatDoy, dayOfYearToMonthDay } from './doy.js';
 import { CHANNELS, channelByKey, DERIVED_CHANNELS, NULL_SHOCK_EPSILON, DIFFERENCE_RANGES } from './constants.js';
 import { initMap, updateGridDisplay, setShockBox, setBoundaries, resetView, toggleSatellite } from './map3d.js';
 import { initWeatherEffects, updateWeatherState, toggleWindOverlay, toggleWeatherFx, setWeatherShockBox, setWeatherBoundaries } from './weather-effects.js';
+import { initWind, setWindData, toggleWind } from './wind.js';
 import { buildLandMask, buildStateAssignments, flatIndexStep } from './grid.js';
 import { loadShockPresets, snapToGrid, buildPerturbationTensor, generateRandomJudgeShock, checkEdgeBandOverlap } from './shock.js';
-import { computeDifference, analyzeCausality } from './analysis.js';
+import { computeDifference, analyzeCausality, kitCausalityChecks } from './analysis.js';
 import { computeBlurMetrics } from './blur.js';
 import { computeImpacts } from './impact.js';
 import { renderRadiusChart, renderSeriesChart, renderStateImpactBars } from './charts.js';
@@ -59,7 +60,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     store.set('selectedChannel', 't2m');
     store.set('viewMode', 'normal'); // open on real model output; Difference is blank until a shock is applied
     store.set('isFlat', true); // default to 2D flat for clear top-down view
-    store.set('windEnabled', false);
+    store.set('windEnabled', document.getElementById('toggle-wind')?.checked ?? true);
 
     // Initialize map
     const mapContainer = document.getElementById('map');
@@ -73,7 +74,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Initialize wind and atmospheric weather overlay
     const windCanvas = document.getElementById('wind-canvas');
     initWeatherEffects(windCanvas, mapInstance);
-    toggleWindOverlay(true);
+    toggleWindOverlay(store.get('windEnabled'));
+
+    // Wind streamlines (u10/v10 from the model) on their own layer, so the weather effects
+    // canvas clearing every frame does not erase the streamline trails
+    const streamCanvas = windCanvas.cloneNode(false);
+    streamCanvas.removeAttribute('id');
+    streamCanvas.setAttribute('aria-hidden', 'true');
+    streamCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:var(--z-canvas);';
+    windCanvas.parentNode.insertBefore(streamCanvas, windCanvas);
+    initWind(streamCanvas, mapInstance);
+    toggleWind(store.get('windEnabled'));
 
     // Load boundaries & land mask
     loadBoundariesAndMask();
@@ -85,6 +96,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Wire UI events
     setupUIEvents();
     setupHealthListener();
+
+    // Channel stds for the Stable check (written by tools/make_presets.py)
+    const meta = await api.getMeta();
+    store.set('channelStds', meta?.channel_stds || null);
 
     // Starting weather: real days in live mode (dashboard/presets/), synthetic in mock mode
     const firstScenario = await setupScenarioSelect();
@@ -236,6 +251,7 @@ function setupUIEvents() {
     const on = e.target.checked;
     store.set('windEnabled', on);
     toggleWindOverlay(on);
+    toggleWind(on);
   });
 
   // Satellite view toggle
@@ -629,6 +645,13 @@ async function handleRunSimulation() {
       channelIndex: chIdx,
       shockBox: shock?.box
     });
+    // Chips use the organisers' definitions (all channels, in units of channel std)
+    causality.causalityChecks = kitCausalityChecks({
+      differenceBuffer: diff,
+      steps,
+      shockBox: shock?.box,
+      channelStds: store.get('channelStds')
+    });
     store.set('causality', causality);
     renderCausalityChips(causality.causalityChecks);
     renderRadiusChart(document.getElementById('radius-chart-container'), causality.radiusMetrics);
@@ -762,6 +785,8 @@ function updateDisplay() {
     });
 
     // Feed wind and atmospheric effects
+    setWindData(buffer, step);
+    if (store.get('windEnabled')) toggleWind(true);
     updateWeatherState({
       buffer,
       step,

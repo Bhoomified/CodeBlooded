@@ -1,6 +1,6 @@
 {
   "apiBase": "http://localhost:8000",
-  "mode": "mock",
+  "mode": "live",
   "transport": "lists",
   "doyConvention": "default",
   "maxSteps": 14,

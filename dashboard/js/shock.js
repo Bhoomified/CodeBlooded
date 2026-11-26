@@ -26,14 +26,23 @@ export async function loadShockPresets() {
 }
 
 /**
- * Snap raw lat/lon bounding box to nearest 1-degree grid cell boundaries.
+ * Snap raw lat/lon bounding box to grid cells using the kit's rule (contract.box_mask):
+ * a cell is in the box when its centre lies inside [min, max]. So "8-20 N, 82-94 E" covers
+ * centres 8.5-19.5 N and 82.5-93.5 E, the same cells the organisers' warm_ocean shock uses.
+ * A box smaller than one cell falls back to the nearest cell.
  * @param {{ latMin: number, latMax: number, lonMin: number, lonMax: number }} rawBounds 
  */
 export function snapToGrid(rawBounds) {
-  const rMin = latToRow(Math.min(rawBounds.latMin, rawBounds.latMax));
-  const rMax = latToRow(Math.max(rawBounds.latMin, rawBounds.latMax));
-  const cMin = lonToCol(Math.min(rawBounds.lonMin, rawBounds.lonMax));
-  const cMax = lonToCol(Math.max(rawBounds.lonMin, rawBounds.lonMax));
+  const la0 = Math.min(rawBounds.latMin, rawBounds.latMax), la1 = Math.max(rawBounds.latMin, rawBounds.latMax);
+  const lo0 = Math.min(rawBounds.lonMin, rawBounds.lonMax), lo1 = Math.max(rawBounds.lonMin, rawBounds.lonMax);
+  const clampR = (r) => Math.max(0, Math.min(GRID.ROWS - 1, r));
+  const clampC = (c) => Math.max(0, Math.min(GRID.COLS - 1, c));
+  let rMin = clampR(Math.ceil((la0 - GRID.LAT_MIN) / GRID.CELL_SIZE - 1e-9));
+  let rMax = clampR(Math.floor((la1 - GRID.LAT_MIN) / GRID.CELL_SIZE + 1e-9));
+  let cMin = clampC(Math.ceil((lo0 - GRID.LON_MIN) / GRID.CELL_SIZE - 1e-9));
+  let cMax = clampC(Math.floor((lo1 - GRID.LON_MIN) / GRID.CELL_SIZE + 1e-9));
+  if (rMin > rMax) { rMin = rMax = latToRow((la0 + la1) / 2); }
+  if (cMin > cMax) { cMin = cMax = lonToCol((lo0 + lo1) / 2); }
 
   return {
     latMin: rowToLat(rMin) - 0.5,
