@@ -1,0 +1,360 @@
+[
+ {
+  "model": "persistence",
+  "windows": 144,
+  "invalid_windows": 0,
+  "mean_skill": -0.2784,
+  "mean_csi_skill": -0.0299,
+  "forecast_points_45": 0.0,
+  "rmse_points_30": 0.0,
+  "csi_points_15": 0.0,
+  "anti_blur_points_10": 8.33,
+  "day8_variance_ratio_by_channel": [
+   1.0089999437332153,
+   2.611999988555908,
+   1.2020000219345093,
+   1.1150000095367432,
+   1.1859999895095825,
+   1.031999945640564
+  ],
+  "rain_day8_ratio_windows_over_2.5": 0.257,
+  "skill_by_channel": [
+   -0.1914,
+   -0.3562,
+   -0.2943,
+   -0.2777,
+   -0.3454,
+   -0.2054
+  ],
+  "beats_persistence_day4": false,
+  "day4_skill_vs_persistence": 0.0,
+  "latency_ms_mean": 0.0,
+  "latency_ms_max": 0.1,
+  "causality_points_15": 11.25,
+  "null_identical_all": true,
+  "shock_pass_rates": {
+   "warm_ocean": {
+    "nonzero": 1.0,
+    "localized": 1.0,
+    "propagates": 0.0,
+    "stable": 1.0,
+    "no_teleport": 1.0
+   },
+   "monsoon_stall": {
+    "nonzero": 1.0,
+    "localized": 1.0,
+    "propagates": 0.0,
+    "stable": 1.0,
+    "no_teleport": 1.0
+   }
+  },
+  "day1_near_fraction": {
+   "warm_ocean": 1.0,
+   "monsoon_stall": 1.0
+  },
+  "response_radius_90pct_cells_by_day": {
+   "warm_ocean": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "monsoon_stall": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "total_auto_70": 19.58
+ },
+ {
+  "model": "climatology",
+  "windows": 144,
+  "invalid_windows": 0,
+  "mean_skill": -0.2119,
+  "mean_csi_skill": -0.0765,
+  "forecast_points_45": 0.0,
+  "rmse_points_30": 0.0,
+  "csi_points_15": 0.0,
+  "anti_blur_points_10": 10.0,
+  "day8_variance_ratio_by_channel": [
+   1.0140000581741333,
+   0.6359999775886536,
+   0.753000020980835,
+   0.7519999742507935,
+   0.9079999923706055,
+   0.8759999871253967
+  ],
+  "rain_day8_ratio_windows_over_2.5": 0.042,
+  "skill_by_channel": [
+   -0.3275,
+   -0.0679,
+   -0.2042,
+   -0.1352,
+   -0.2347,
+   -0.302
+  ],
+  "beats_persistence_day4": true,
+  "day4_skill_vs_persistence": 0.1465,
+  "latency_ms_mean": 0.1,
+  "latency_ms_max": 0.1,
+  "causality_points_15": 0.0,
+  "total_auto_70": 10.0
+ },
+ {
+  "model": "ridge (fallback model)",
+  "windows": 144,
+  "invalid_windows": 0,
+  "mean_skill": -0.1072,
+  "mean_csi_skill": -0.1442,
+  "forecast_points_45": 0.0,
+  "rmse_points_30": 0.0,
+  "csi_points_15": 0.0,
+  "anti_blur_points_10": 8.35,
+  "day8_variance_ratio_by_channel": [
+   0.9980000257492065,
+   0.0820000022649765,
+   0.4480000138282776,
+   0.32199999690055847,
+   0.7429999709129333,
+   0.8569999933242798
+  ],
+  "rain_day8_ratio_windows_over_2.5": 0.0,
+  "skill_by_channel": [
+   -0.1364,
+   -0.0125,
+   -0.1595,
+   -0.1482,
+   -0.1134,
+   -0.0729
+  ],
+  "beats_persistence_day4": true,
+  "day4_skill_vs_persistence": 0.1186,
+  "latency_ms_mean": 5.5,
+  "latency_ms_max": 10.5,
+  "causality_points_15": 11.25,
+  "null_identical_all": true,
+  "shock_pass_rates": {
+   "warm_ocean": {
+    "nonzero": 1.0,
+    "localized": 1.0,
+    "propagates": 0.0,
+    "stable": 1.0,
+    "no_teleport": 1.0
+   },
+   "monsoon_stall": {
+    "nonzero": 1.0,
+    "localized": 1.0,
+    "propagates": 0.0,
+    "stable": 1.0,
+    "no_teleport": 1.0
+   }
+  },
+  "day1_near_fraction": {
+   "warm_ocean": 1.0,
+   "monsoon_stall": 1.0
+  },
+  "response_radius_90pct_cells_by_day": {
+   "warm_ocean": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "monsoon_stall": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.1,
+    0.1,
+    0.1
+   ]
+  },
+  "total_auto_70": 19.6
+ },
+ {
+  "model": "CNN raw",
+  "windows": 144,
+  "invalid_windows": 0,
+  "mean_skill": 0.1068,
+  "mean_csi_skill": 0.096,
+  "forecast_points_45": 41.1,
+  "rmse_points_30": 26.7,
+  "csi_points_15": 14.4,
+  "anti_blur_points_10": 10.0,
+  "day8_variance_ratio_by_channel": [
+   1.0080000162124634,
+   0.6660000085830688,
+   0.8240000009536743,
+   0.8019999861717224,
+   0.9660000205039978,
+   0.9120000004768372
+  ],
+  "rain_day8_ratio_windows_over_2.5": 0.042,
+  "skill_by_channel": [
+   0.1238,
+   0.0804,
+   0.0864,
+   0.0935,
+   0.1124,
+   0.1444
+  ],
+  "beats_persistence_day4": true,
+  "day4_skill_vs_persistence": 0.2704,
+  "latency_ms_mean": 119.3,
+  "latency_ms_max": 184.3,
+  "causality_points_15": 13.59,
+  "null_identical_all": true,
+  "shock_pass_rates": {
+   "warm_ocean": {
+    "nonzero": 1.0,
+    "localized": 1.0,
+    "propagates": 0.833,
+    "stable": 1.0,
+    "no_teleport": 1.0
+   },
+   "monsoon_stall": {
+    "nonzero": 1.0,
+    "localized": 1.0,
+    "propagates": 0.417,
+    "stable": 1.0,
+    "no_teleport": 1.0
+   }
+  },
+  "day1_near_fraction": {
+   "warm_ocean": 0.949,
+   "monsoon_stall": 0.989
+  },
+  "response_radius_90pct_cells_by_day": {
+   "warm_ocean": [
+    1.7,
+    3.0,
+    4.0,
+    4.9,
+    5.6,
+    6.1,
+    6.6,
+    6.4,
+    6.3,
+    6.8
+   ],
+   "monsoon_stall": [
+    0.0,
+    2.1,
+    4.5,
+    6.6,
+    7.7,
+    8.6,
+    8.7,
+    9.2,
+    9.8,
+    10.4
+   ]
+  },
+  "total_auto_70": 64.69
+ },
+ {
+  "model": "CNN + rain equaliser (ship candidate)",
+  "windows": 144,
+  "invalid_windows": 0,
+  "mean_skill": 0.106,
+  "mean_csi_skill": 0.0953,
+  "forecast_points_45": 40.8,
+  "rmse_points_30": 26.5,
+  "csi_points_15": 14.3,
+  "anti_blur_points_10": 10.0,
+  "day8_variance_ratio_by_channel": [
+   1.0080000162124634,
+   0.7149999737739563,
+   0.8240000009536743,
+   0.8019999861717224,
+   0.9660000205039978,
+   0.9120000004768372
+  ],
+  "rain_day8_ratio_windows_over_2.5": 0.049,
+  "skill_by_channel": [
+   0.1238,
+   0.0756,
+   0.0864,
+   0.0935,
+   0.1124,
+   0.1444
+  ],
+  "beats_persistence_day4": true,
+  "day4_skill_vs_persistence": 0.2699,
+  "latency_ms_mean": 120.6,
+  "latency_ms_max": 190.9,
+  "causality_points_15": 13.59,
+  "null_identical_all": true,
+  "shock_pass_rates": {
+   "warm_ocean": {
+    "nonzero": 1.0,
+    "localized": 1.0,
+    "propagates": 0.917,
+    "stable": 0.917,
+    "no_teleport": 1.0
+   },
+   "monsoon_stall": {
+    "nonzero": 1.0,
+    "localized": 1.0,
+    "propagates": 0.417,
+    "stable": 1.0,
+    "no_teleport": 1.0
+   }
+  },
+  "day1_near_fraction": {
+   "warm_ocean": 0.949,
+   "monsoon_stall": 0.989
+  },
+  "response_radius_90pct_cells_by_day": {
+   "warm_ocean": [
+    1.7,
+    3.0,
+    4.1,
+    5.0,
+    5.7,
+    6.1,
+    6.6,
+    6.3,
+    6.2,
+    6.6
+   ],
+   "monsoon_stall": [
+    0.0,
+    2.1,
+    4.5,
+    6.6,
+    7.7,
+    8.8,
+    8.9,
+    9.1,
+    9.7,
+    10.5
+   ]
+  },
+  "total_auto_70": 64.39
+ }
+]
