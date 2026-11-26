@@ -143,8 +143,8 @@
   ],
   "beats_persistence_day4": true,
   "day4_skill_vs_persistence": 0.1186,
-  "latency_ms_mean": 5.5,
-  "latency_ms_max": 10.5,
+  "latency_ms_mean": 6.2,
+  "latency_ms_max": 9.7,
   "causality_points_15": 11.25,
   "null_identical_all": true,
   "shock_pass_rates": {
@@ -199,40 +199,40 @@
   "model": "CNN raw",
   "windows": 144,
   "invalid_windows": 0,
-  "mean_skill": 0.1068,
-  "mean_csi_skill": 0.096,
-  "forecast_points_45": 41.1,
-  "rmse_points_30": 26.7,
-  "csi_points_15": 14.4,
+  "mean_skill": 0.1057,
+  "mean_csi_skill": 0.0971,
+  "forecast_points_45": 41.0,
+  "rmse_points_30": 26.43,
+  "csi_points_15": 14.57,
   "anti_blur_points_10": 10.0,
   "day8_variance_ratio_by_channel": [
-   1.0080000162124634,
-   0.6660000085830688,
-   0.8240000009536743,
-   0.8019999861717224,
-   0.9660000205039978,
-   0.9120000004768372
+   1.00600004196167,
+   0.671999990940094,
+   0.8330000042915344,
+   0.8119999766349792,
+   0.9409999847412109,
+   0.9139999747276306
   ],
   "rain_day8_ratio_windows_over_2.5": 0.042,
   "skill_by_channel": [
-   0.1238,
-   0.0804,
-   0.0864,
-   0.0935,
-   0.1124,
-   0.1444
+   0.1252,
+   0.078,
+   0.0862,
+   0.0907,
+   0.1114,
+   0.1428
   ],
   "beats_persistence_day4": true,
-  "day4_skill_vs_persistence": 0.2704,
-  "latency_ms_mean": 119.3,
-  "latency_ms_max": 184.3,
-  "causality_points_15": 13.59,
+  "day4_skill_vs_persistence": 0.2682,
+  "latency_ms_mean": 131.6,
+  "latency_ms_max": 185.6,
+  "causality_points_15": 13.75,
   "null_identical_all": true,
   "shock_pass_rates": {
    "warm_ocean": {
     "nonzero": 1.0,
     "localized": 1.0,
-    "propagates": 0.833,
+    "propagates": 0.917,
     "stable": 1.0,
     "no_teleport": 1.0
    },
@@ -246,68 +246,68 @@
   },
   "day1_near_fraction": {
    "warm_ocean": 0.949,
-   "monsoon_stall": 0.989
+   "monsoon_stall": 0.988
   },
   "response_radius_90pct_cells_by_day": {
    "warm_ocean": [
     1.7,
-    3.0,
-    4.0,
-    4.9,
-    5.6,
-    6.1,
-    6.6,
-    6.4,
-    6.3,
-    6.8
+    2.8,
+    3.9,
+    4.8,
+    5.5,
+    6.2,
+    7.1,
+    7.5,
+    7.6,
+    7.8
    ],
    "monsoon_stall": [
     0.0,
-    2.1,
-    4.5,
-    6.6,
-    7.7,
-    8.6,
-    8.7,
-    9.2,
-    9.8,
-    10.4
+    2.5,
+    6.3,
+    8.0,
+    9.4,
+    10.1,
+    10.3,
+    10.8,
+    11.7,
+    12.5
    ]
   },
-  "total_auto_70": 64.69
+  "total_auto_70": 64.75
  },
  {
   "model": "CNN + rain equaliser (ship candidate)",
   "windows": 144,
   "invalid_windows": 0,
-  "mean_skill": 0.106,
-  "mean_csi_skill": 0.0953,
-  "forecast_points_45": 40.8,
-  "rmse_points_30": 26.5,
-  "csi_points_15": 14.3,
+  "mean_skill": 0.1048,
+  "mean_csi_skill": 0.0963,
+  "forecast_points_45": 40.66,
+  "rmse_points_30": 26.21,
+  "csi_points_15": 14.45,
   "anti_blur_points_10": 10.0,
   "day8_variance_ratio_by_channel": [
-   1.0080000162124634,
-   0.7149999737739563,
-   0.8240000009536743,
-   0.8019999861717224,
-   0.9660000205039978,
-   0.9120000004768372
+   1.00600004196167,
+   0.722000002861023,
+   0.8330000042915344,
+   0.8119999766349792,
+   0.9409999847412109,
+   0.9139999747276306
   ],
   "rain_day8_ratio_windows_over_2.5": 0.049,
   "skill_by_channel": [
-   0.1238,
-   0.0756,
-   0.0864,
-   0.0935,
-   0.1124,
-   0.1444
+   0.1252,
+   0.0727,
+   0.0862,
+   0.0907,
+   0.1114,
+   0.1428
   ],
   "beats_persistence_day4": true,
-  "day4_skill_vs_persistence": 0.2699,
-  "latency_ms_mean": 120.6,
-  "latency_ms_max": 190.9,
-  "causality_points_15": 13.59,
+  "day4_skill_vs_persistence": 0.2674,
+  "latency_ms_mean": 132.3,
+  "latency_ms_max": 189.5,
+  "causality_points_15": 13.52,
   "null_identical_all": true,
   "shock_pass_rates": {
    "warm_ocean": {
@@ -321,40 +321,40 @@
     "nonzero": 1.0,
     "localized": 1.0,
     "propagates": 0.417,
-    "stable": 1.0,
+    "stable": 0.958,
     "no_teleport": 1.0
    }
   },
   "day1_near_fraction": {
    "warm_ocean": 0.949,
-   "monsoon_stall": 0.989
+   "monsoon_stall": 0.988
   },
   "response_radius_90pct_cells_by_day": {
    "warm_ocean": [
     1.7,
-    3.0,
+    2.8,
     4.1,
-    5.0,
-    5.7,
-    6.1,
-    6.6,
-    6.3,
-    6.2,
-    6.6
+    4.9,
+    5.8,
+    6.4,
+    7.1,
+    7.3,
+    7.2,
+    7.5
    ],
    "monsoon_stall": [
     0.0,
-    2.1,
-    4.5,
-    6.6,
-    7.7,
-    8.8,
-    8.9,
-    9.1,
-    9.7,
-    10.5
+    2.5,
+    6.5,
+    7.9,
+    9.4,
+    10.3,
+    10.5,
+    11.2,
+    12.4,
+    13.1
    ]
   },
-  "total_auto_70": 64.39
+  "total_auto_70": 64.18
  }
 ]
