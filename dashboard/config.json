@@ -1,0 +1,13 @@
+{
+  "apiBase": "http://localhost:8000",
+  "mode": "mock",
+  "transport": "lists",
+  "doyConvention": "default",
+  "maxSteps": 14,
+  "endpoints": {
+    "health": "/health",
+    "simulate": "/simulate",
+    "presets": "/presets",
+    "meta": "/meta"
+  }
+}

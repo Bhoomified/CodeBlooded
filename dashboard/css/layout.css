@@ -1,0 +1,188 @@
+/* ==========================================================================
+   Forecastrophe — Layout
+   Climate Digital-Twin Dashboard for India
+   --------------------------------------------------------------------------
+   Shell structure: header, left rail, map area, right inspector, bottom bar.
+   Presentation mode and responsive breakpoints.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   App Header — 48 px top bar
+   -------------------------------------------------------------------------- */
+
+#app-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 48px;
+  padding: 0 var(--sp-4);
+  gap: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  background-color: var(--panel);
+  z-index: var(--z-panel);
+  flex-shrink: 0;
+}
+
+.wordmark {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  user-select: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   App Main — fills viewport between header and bottom bar
+   -------------------------------------------------------------------------- */
+
+#app-main {
+  display: flex;
+  flex-direction: row;
+  height: calc(100vh - 48px - 48px);   /* viewport minus header minus bottom bar */
+  overflow: hidden;
+}
+
+
+/* --------------------------------------------------------------------------
+   Left Rail — 280 px fixed, scrollable panel
+   -------------------------------------------------------------------------- */
+
+#left-rail {
+  width: 280px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background-color: var(--panel);
+  padding: var(--sp-3);
+  z-index: var(--z-panel);
+}
+
+/* Consecutive panels inside the rails get vertical breathing room */
+#left-rail .panel + .panel,
+#right-inspector .panel + .panel {
+  margin-top: var(--sp-2);
+}
+
+
+/* --------------------------------------------------------------------------
+   Map Container — fills remaining horizontal space
+   -------------------------------------------------------------------------- */
+
+#map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;                        /* prevent flex blowout */
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+#wind-canvas {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   Right Inspector — 320 px fixed, tabbed panel
+   -------------------------------------------------------------------------- */
+
+#right-inspector {
+  width: 320px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background-color: var(--panel);
+  display: flex;
+  flex-direction: column;
+  z-index: var(--z-panel);
+}
+
+
+/* --------------------------------------------------------------------------
+   Bottom Bar — 48 px status / toolbar strip
+   -------------------------------------------------------------------------- */
+
+#bottom-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 48px;
+  padding: 0 var(--sp-4);
+  gap: var(--sp-3);
+  border-top: 1px solid var(--border);
+  background-color: var(--panel);
+  flex-shrink: 0;
+}
+
+
+/* --------------------------------------------------------------------------
+   Presentation Mode
+   --------------------------------------------------------------------------
+   Body receives .presentation — rails hide, map expands, bottom bar shrinks.
+   -------------------------------------------------------------------------- */
+
+.presentation #left-rail,
+.presentation #right-inspector {
+  display: none;
+}
+
+.presentation #app-main {
+  height: calc(100vh - 48px - 32px);   /* recalc for smaller bottom bar */
+}
+
+.presentation #bottom-bar {
+  height: 32px;
+  padding: 0 var(--sp-3);
+  gap: var(--sp-2);
+  font-size: var(--text-xs);
+}
+
+
+/* --------------------------------------------------------------------------
+   Responsive — ≤ 1200 px: inspector overlays
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1200px) {
+  #right-inspector {
+    position: fixed;
+    top: 48px;                         /* below header */
+    right: 0;
+    bottom: 48px;                      /* above bottom bar */
+    width: 320px;
+    z-index: calc(var(--z-panel) + 5);
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.35);
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   Responsive — ≤ 900 px: left rail collapses to icon strip
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  #left-rail {
+    width: 48px;
+    padding: var(--sp-2) var(--sp-1);
+    overflow-x: hidden;
+  }
+
+  /* Hide text content, show only icons when collapsed */
+  #left-rail .panel__header span,
+  #left-rail .panel__body {
+    display: none;
+  }
+}

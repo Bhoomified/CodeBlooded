@@ -1,13 +1,293 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><title>Multiverse of Monsoon</title></head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forecastrophe // Climate Digital Twin of India</title>
+  
+  <!-- Local Vendor CSS -->
+  <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
+  <link rel="stylesheet" href="vendor/uplot/uPlot.min.css">
+
+  <!-- Application CSS Design System -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
 <body>
-<h1>Multiverse of Monsoon</h1>
-<p>Model status: <b id="status">checking...</b></p>
-<script>
-// The dashboard only talks to the live model over HTTP. Open this file after starting serve.py.
-const API = "http://localhost:8000";
-fetch(API + "/health", {method: "POST"})
-  .then(r => r.json()).then(j => { document.getElementById("status").textContent = j.status + " (" + j.model_name + ")"; })
-  .catch(() => { document.getElementById("status").textContent = "model unavailable - start serve.py"; });
-</script>
-</body></html>
+
+  <!-- Top App Header -->
+  <header id="app-header">
+    <div class="wordmark">Forecastrophe</div>
+    
+    <div style="display:flex;align-items:center;gap:8px;margin-left:16px;">
+      <span id="health-dot" class="health-dot health-dot--connecting"></span>
+      <span id="health-status-text" class="text-mono" style="font-size:11px;color:var(--text-secondary);">Connecting...</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
+      <!-- Latency Metric -->
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="text-label">Inference:</span>
+        <span id="latency-label" class="text-mono" style="font-size:11px;">0 ms</span>
+        <div style="width:50px;height:6px;background:var(--surface);border-radius:2px;overflow:hidden;">
+          <div id="latency-bar-fill" style="width:0%;height:100%;background:var(--accent);"></div>
+        </div>
+      </div>
+
+      <!-- Mode Badge -->
+      <span id="badge-mode" class="badge badge--mock" style="display:none;">MOCK ENGINE</span>
+
+      <!-- Export actions -->
+      <button id="btn-export-png" class="btn btn--ghost btn--sm">PNG Map</button>
+      <button id="btn-export-json" class="btn btn--ghost btn--sm">JSON Run</button>
+      <button id="btn-export-csv" class="btn btn--ghost btn--sm">CSV Impact</button>
+    </div>
+  </header>
+
+  <!-- Main Work Stage -->
+  <main id="app-main">
+    
+    <!-- Left Control Rail: Scenario & Shock Painter -->
+    <aside id="left-rail">
+      
+      <!-- Scenario Setup Panel -->
+      <div class="panel">
+        <div class="panel__header">Scenario Parameters</div>
+        <div class="panel__body">
+          <div style="margin-bottom:12px;">
+            <label class="text-label">Base Climatology (DOY)</label>
+            <div id="val-doy" class="text-mono" style="font-size:12px;color:var(--text-primary);margin-top:2px;">15 Jul (DOY 196)</div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;">
+              <label class="text-label">Forecast Horizon</label>
+              <span id="val-steps" class="text-mono" style="font-size:11px;color:var(--accent);">14</span>
+            </div>
+            <input id="slider-steps" type="range" min="1" max="14" value="14" class="slider" style="width:100%;margin-top:4px;">
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:16px;">
+            <button id="btn-run" class="btn btn--primary" style="flex:1;">Run Simulation</button>
+            <button id="btn-null-shock" class="btn btn--ghost" title="Reset shock to null test">Null Test</button>
+          </div>
+          <div id="run-progress-label" class="text-mono" style="font-size:10px;color:var(--accent);margin-top:4px;min-height:14px;"></div>
+        </div>
+      </div>
+
+      <!-- Shock Painter Panel -->
+      <div class="panel">
+        <div class="panel__header">Shock Painter (What-If)</div>
+        <div class="panel__body">
+          <div style="margin-bottom:10px;">
+            <label class="text-label">Presets</label>
+            <select id="select-preset" class="select" style="width:100%;margin-top:2px;">
+              <option value="">-- Choose Preset --</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <button id="btn-judge-shock" class="btn btn--ghost btn--sm" style="width:100%;">Random "Judge Shock"</button>
+          </div>
+
+          <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;">
+            <label class="text-label">Bounding Box (Lat / Lon)</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
+              <input id="input-lat-min" type="number" step="0.5" placeholder="Min Lat" class="input">
+              <input id="input-lat-max" type="number" step="0.5" placeholder="Max Lat" class="input">
+              <input id="input-lon-min" type="number" step="0.5" placeholder="Min Lon" class="input">
+              <input id="input-lon-max" type="number" step="0.5" placeholder="Max Lon" class="input">
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <label class="text-label">Perturbation Target</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
+              <select id="select-shock-ch" class="select">
+                <option value="0">t2m (Temp)</option>
+                <option value="1">tp (Rain)</option>
+                <option value="2">u10 (U-Wind)</option>
+                <option value="3">v10 (V-Wind)</option>
+                <option value="4">msl (Pressure)</option>
+                <option value="5">tcwv (Moisture)</option>
+              </select>
+              <select id="select-shock-mode" class="select">
+                <option value="additive">Additive (+/-)</option>
+                <option value="percent">Percent (%)</option>
+                <option value="multiplier">Multiplier (x)</option>
+              </select>
+            </div>
+            <input id="input-shock-mag" type="number" step="0.1" value="3.0" class="input" style="width:100%;margin-top:6px;">
+          </div>
+
+          <!-- Edge band alert warning -->
+          <div id="shock-edge-warning" class="chip chip--warning" style="display:none;margin-top:10px;width:100%;"></div>
+        </div>
+      </div>
+
+      <!-- Quick Summary Line -->
+      <div style="padding:0 8px;font-size:10px;color:var(--text-dim);" class="text-mono" id="scenario-summary-text">
+        Ready.
+      </div>
+
+    </aside>
+
+    <!-- Center Stage: 3D Map View -->
+    <section id="map-container">
+      <div id="map"></div>
+      <canvas id="wind-canvas"></canvas>
+
+      <!-- Map Floating Overlay Controls -->
+      <div style="position:absolute;top:12px;left:12px;z-index:20;background:rgba(24,27,32,0.85);backdrop-filter:blur(4px);padding:8px 12px;border:1px solid var(--border);border-radius:3px;display:flex;gap:12px;align-items:center;">
+        <div>
+          <label class="text-label" style="display:block;">Variable</label>
+          <select id="select-channel" class="select" style="margin-top:2px;">
+            <option value="t2m">2m Temperature (K)</option>
+            <option value="tp">Precipitation (mm/day)</option>
+            <option value="u10">10m U-Wind (m/s)</option>
+            <option value="v10">10m V-Wind (m/s)</option>
+            <option value="wind_speed">Derived Wind Speed (m/s)</option>
+            <option value="msl">MSL Pressure (Pa)</option>
+            <option value="tcwv">Water Vapour (kg/m²)</option>
+          </select>
+        </div>
+
+        <div style="border-left:1px solid var(--border);padding-left:12px;">
+          <label class="text-label" style="display:block;">Multiverse Branch</label>
+          <div style="display:flex;gap:8px;margin-top:4px;font-size:11px;" class="text-mono">
+            <label><input type="radio" name="view-mode" value="normal"> Prime</label>
+            <label><input type="radio" name="view-mode" value="shocked"> Shocked</label>
+            <label><input type="radio" name="view-mode" value="difference" checked> Difference</label>
+          </div>
+        </div>
+
+        <div style="border-left:1px solid var(--border);padding-left:12px;display:flex;gap:8px;align-items:center;">
+          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-flat"> 2D Flat</label>
+          <label style="font-size:11px;" class="text-mono"><input type="checkbox" id="toggle-wind"> Wind</label>
+          <button id="btn-reset-view" class="btn btn--ghost btn--sm">Reset Camera</button>
+        </div>
+      </div>
+
+      <!-- Color Legend (Bottom Left of Map) -->
+      <div id="legend-container" style="position:absolute;bottom:12px;left:12px;z-index:20;background:rgba(24,27,32,0.85);padding:6px 10px;border:1px solid var(--border);border-radius:2px;"></div>
+
+      <!-- Interactive Map Tooltip -->
+      <div id="map-tooltip" style="position:absolute;display:none;z-index:40;background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:6px 10px;pointer-events:none;font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,0.5);"></div>
+    </section>
+
+    <!-- Right Inspector Tabs -->
+    <aside id="right-inspector">
+      <div class="tab-bar">
+        <button class="tab-bar__tab tab-bar__tab--active" data-tab="radius">Radius</button>
+        <button class="tab-bar__tab" data-tab="series">Series</button>
+        <button class="tab-bar__tab" data-tab="impact">Impact</button>
+        <button class="tab-bar__tab" data-tab="blur">Blur</button>
+        <button class="tab-bar__tab" data-tab="battery">Battery</button>
+        <button class="tab-bar__tab" data-tab="diag">Diag</button>
+        <button class="tab-bar__tab" data-tab="limits">Limits</button>
+      </div>
+
+      <!-- Tab: Radius & Causality -->
+      <div id="pane-radius" class="tab-pane" style="padding:12px;display:block;">
+        <div class="text-label" style="margin-bottom:6px;">Causality Compliance (Track 2)</div>
+        <div id="causality-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;"></div>
+        
+        <div class="text-label" style="margin-bottom:4px;">Response Radius r90 by Day</div>
+        <div id="radius-chart-container" style="background:var(--surface);border-radius:3px;padding:8px 4px;"></div>
+        
+        <p style="font-size:10px;color:var(--text-dim);margin-top:10px;">
+          Client-side approximation of organiser checks; authoritative check is the kit's causality_checks. Limit line: 3 + 8*(k+1) cells.
+        </p>
+      </div>
+
+      <!-- Tab: Time Series -->
+      <div id="pane-series" class="tab-pane" style="padding:12px;display:none;">
+        <div id="pinned-cell-title" class="text-label" style="margin-bottom:6px;">Click any cell to pin time-series</div>
+        <div id="series-chart-container" style="background:var(--surface);border-radius:3px;padding:8px 4px;"></div>
+      </div>
+
+      <!-- Tab: Sectoral Impact -->
+      <div id="pane-impact" class="tab-pane" style="padding:12px;display:none;">
+        <div class="text-label" style="margin-bottom:4px;">National Rainfall Deficit</div>
+        <div id="val-national-deficit" class="text-mono" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:12px;">--</div>
+
+        <div class="text-label" style="margin-bottom:6px;">State-by-State Anomaly (Cumulative tp)</div>
+        <div id="state-impact-bars"></div>
+
+        <p style="font-size:9px;color:var(--text-dim);margin-top:12px;">
+          Note: model output, not a crop-yield or official risk prediction. Daily mean t2m represents 4-sample average, not afternoon max.
+        </p>
+      </div>
+
+      <!-- Tab: Blur Monitor -->
+      <div id="pane-blur" class="tab-pane" style="padding:12px;display:none;">
+        <div class="text-label" style="margin-bottom:6px;">Spatial Standard Deviation Monitor</div>
+        <div id="blur-table-container"></div>
+        <p style="font-size:9px;color:var(--text-dim);margin-top:8px;">
+          Relative to Day 0; not the organisers' score. Ratios below 0.4 indicate excessive field smoothing.
+        </p>
+      </div>
+
+      <!-- Tab: Physics Battery -->
+      <div id="pane-battery" class="tab-pane" style="padding:12px;display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span class="text-label">Automated Verification Suite</span>
+          <button id="btn-run-battery" class="btn btn--sm btn--primary">Run Suite</button>
+        </div>
+        <div id="battery-results">
+          <p class="text-label" style="font-size:10px;">Click 'Run Suite' to verify 6 core physics constraints sequentially.</p>
+        </div>
+      </div>
+
+      <!-- Tab: Diagnostics -->
+      <div id="pane-diag" class="tab-pane" style="padding:12px;display:none;">
+        <div class="text-label" style="margin-bottom:6px;">Server Diagnostics Log</div>
+        <div id="diagnostics-container"></div>
+      </div>
+
+      <!-- Tab: Honest Limits -->
+      <div id="pane-limits" class="tab-pane" style="padding:12px;display:none;font-size:11px;color:var(--text-secondary);">
+        <div class="text-label" style="margin-bottom:8px;">Known Model Limitations</div>
+        <ul style="padding-left:16px;line-height:1.6;">
+          <li><b>Cyclone Track Blur:</b> Significant spread and dispersion observed after Day 4.</li>
+          <li><b>Extreme Rain Amounts:</b> Convective extremes above 150 mm/day are heavily diffused.</li>
+          <li><b>Sharp Fronts:</b> Spatial boundaries blur due to finite-difference diffusion.</li>
+          <li><b>Out-of-Distribution Shocks:</b> Perturbations outside historical variability produce unreliable non-linear artifacts.</li>
+          <li><b>Domain Boundaries:</b> Model cannot assimilate weather arriving outside the 32x36 domain.</li>
+        </ul>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- Bottom Timeline Bar -->
+  <footer id="bottom-bar">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button id="btn-prev-day" class="btn btn--ghost btn--sm">D-1</button>
+      <button id="btn-play-pause" class="btn btn--primary btn--sm" style="min-width:54px;">Play</button>
+      <button id="btn-next-day" class="btn btn--ghost btn--sm">D+1</button>
+      <span id="val-timeline-day" class="text-mono" style="font-size:12px;font-weight:700;color:var(--text-primary);margin-left:8px;">Day 0</span>
+    </div>
+
+    <div style="flex:1;margin:0 16px;">
+      <input id="slider-timeline" type="range" min="0" max="13" value="0" class="slider" style="width:100%;">
+    </div>
+
+    <div style="font-size:10px;color:var(--text-dim);" class="text-mono">
+      [Space] Play/Pause &bull; [&larr;/&rarr;] Step &bull; [D] Diff &bull; [S] Shock &bull; [P] Present
+    </div>
+  </footer>
+
+  <!-- Notification Toast -->
+  <div id="notification-toast" class="notification" style="display:none;"></div>
+
+  <!-- Local Vendor Scripts -->
+  <script src="vendor/maplibre/maplibre-gl.js"></script>
+  <script src="vendor/uplot/uPlot.iife.min.js"></script>
+
+  <!-- App Entry Point (ES Module) -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
