@@ -1,0 +1,32 @@
+{
+ "presets": [
+  {
+   "id": "monsoon_july",
+   "label": "Active monsoon, mid-July 2021"
+  },
+  {
+   "id": "monsoon_onset",
+   "label": "Monsoon onset, early June 2020"
+  },
+  {
+   "id": "heavy_rain",
+   "label": "Heavy rain, late July 2021"
+  },
+  {
+   "id": "heatwave",
+   "label": "Pre-monsoon heat, late May 2020"
+  },
+  {
+   "id": "cyclone_bay",
+   "label": "Bay of Bengal cyclone, May 2020"
+  },
+  {
+   "id": "cyclone_arabian",
+   "label": "Arabian Sea cyclone, May 2021"
+  },
+  {
+   "id": "winter_jan",
+   "label": "Winter, January 2021"
+  }
+ ]
+}
