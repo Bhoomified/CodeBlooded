@@ -1,4 +1,5 @@
 # CodeBlooded — Multiverse of Monsoon
+## Forecastrophe
 ### Yugaantar DevForge · Track 2
 
 A fast, physically constrained digital twin of India's daily weather. Given 3 days of state, it rolls weather forward day by day and propagates localized shocks (a warmer Bay of Bengal, weaker monsoon winds) locally before spreading outward at a bounded speed. Includes **Forecastrophe**, an offline 3D dashboard driven live by the model.
@@ -409,9 +410,10 @@ Training artifacts are placed in `server/bundle/` and committed using Git LFS.
 
 ## Team
 
-- **Bhoomi** — Repository and integration
-- **Vaishnavi** — Model training and review
-- **Joel** — Dashboard
+- **Bhoomi** - Repository and integration
+- **Vaishnavi** - Model training and review
+- **Joel** - Dashboard
+- **Aditya** - Testing
 
 ---
 
