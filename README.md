@@ -52,12 +52,12 @@ flowchart TD
 
 ### Pipeline stages
 
-- **Request guard** — checks the initial-state shape, forecast-step count, seasonal input and perturbation shape; repairs non-finite input values where possible.
-- **Shock injector** — applies the physical perturbation to the most recent input state and clips it to the physical envelope.
-- **Rollout engine** — advances the state one day at a time. The CNN is primary, Ridge is the fallback, and persistence is the final fallback.
-- **Rain equaliser** — applies a seasonal, lead-dependent, land/sea-aware monotone quantile mapping to rainfall, with a dry-spell guard.
-- **Climatology pull** — blends forecasts toward a fitted seasonal climatology according to lead/channel weights. For shocked runs, the correction is based on the unshocked forecast so the perturbation response remains attributable to the model's dynamics.
-- **Physical envelope guards** — repairs/clips values to the configured variable bounds before returning the rollout.
+- **Request guard** - checks the initial-state shape, forecast-step count, seasonal input and perturbation shape; repairs non-finite input values where possible.
+- **Shock injector** - applies the physical perturbation to the most recent input state and clips it to the physical envelope.
+- **Rollout engine** - advances the state one day at a time. The CNN is primary, Ridge is the fallback, and persistence is the final fallback.
+- **Rain equaliser** - applies a seasonal, lead-dependent, land/sea-aware monotone quantile mapping to rainfall, with a dry-spell guard.
+- **Climatology pull** - blends forecasts toward a fitted seasonal climatology according to lead/channel weights. For shocked runs, the correction is based on the unshocked forecast so the perturbation response remains attributable to the model's dynamics.
+- **Physical envelope guards** - repairs/clips values to the configured variable bounds before returning the rollout.
 
 ---
 
@@ -415,9 +415,9 @@ The `data/` directory is ignored by Git. Use the provided data release and do no
 
 ## Team
 
-- Bhoomi — Repository and Integration
-- Vaishnavi — Model Training and Review
-- Joel — Dashboard
+- Bhoomi - Repository and Integration
+- Vaishnavi - Model Training and Review
+- Joel - Dashboard
 - Aditya - Testing
 
 ---
