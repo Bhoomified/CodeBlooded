@@ -415,9 +415,10 @@ The `data/` directory is ignored by Git. Use the provided data release and do no
 
 ## Team
 
-- Bhoomi — repository and integration
-- Vaishnavi — model training and review
-- Joel — dashboard
+- Bhoomi — Repository and Integration
+- Vaishnavi — Model Training and Review
+- Joel — Dashboard
+- Aditya - Testing
 
 ---
 
