@@ -1,429 +1,250 @@
-# CodeBlooded - Multiverse of Monsoon
-### Forecastrophe
-### Yugaantar DevForge · Track 2
+<div align="center">
 
-Multiverse of Monsoon is a speed-limited, physically guarded daily-weather emulator for India. It forecasts forward from three days of weather-grid state and allows localized what-if perturbations—such as warming a region or weakening winds—to be injected into the initial state and propagated through the forecast.
+# Multiverse of Monsoon
 
-The core is a compact CNN-based rollout system designed around bounded spatial influence, operational resilience and measurable forecast skill. Forecastrophe is the accompanying visualization and exploration interface; it is a way to inspect the model and compare baseline and perturbed forecasts, not the project's central contribution.
+### A CPU digital twin of India's daily weather that answers *"what if?"*
 
----
+**Team CodeBlooded · Yugaantar DevForge 2026 · Track 2**
 
-## At a glance
+[**Read the brief (PDF)**](docs/brief.pdf) &nbsp;·&nbsp;
+[Run it](#for-judges-run-the-model-and-the-dashboard) &nbsp;·&nbsp;
+[Architecture](#architecture) &nbsp;·&nbsp;
+[Results](#results) &nbsp;·&nbsp;
+[Dashboard](#forecastrophe-dashboard) &nbsp;·&nbsp;
+[Tech stack](#tech-stack)
 
-| | |
-|---|---|
-| **Input** | 3 consecutive days of weather state |
-| **Grid** | 32 × 36 |
-| **Channels** | 6 physical variables |
-| **Forecast horizon** | The simulation engine supports up to 30 daily rollout steps; Forecastrophe is configured for up to 14 days |
-| **Core model** | Speed-limited residual CNN, with Ridge and persistence fallback paths |
-| **Shock experiments** | Localized physical perturbations applied to the final input day |
-| **Inference** | CPU-only, offline, with a compact bundled model |
-| **Evaluation** | A local replica of the organiser scoring workflow plus contract, validity, shock and fallback tests |
+</div>
 
----
+Give it three days of real weather over India and it rolls the weather forward, day by day, on a laptop CPU.
+Change the starting state (warm the Bay of Bengal, weaken the Arabian Sea monsoon wind) and the effect starts
+where you put it, then spreads outward at a physically bounded speed. It never jumps across the map.
 
-## System architecture
+<table>
+<tr>
+<td align="center" width="20%"><h2>67.05<sub>/70</sub></h2><sub>automatic score on held-out<br>2020–21 (local grader replica)</sub></td>
+<td align="center" width="20%"><h2>+27%</h2><sub>more accurate than<br>"tomorrow = today" at day 4</sub></td>
+<td align="center" width="20%"><h2>0.13 s</h2><sub>per 10-day forecast<br>on CPU (limit 5 s)</sub></td>
+<td align="center" width="20%"><h2>4.3 MB</h2><sub>entire model bundle<br>0.67 M parameters</sub></td>
+<td align="center" width="20%"><h2>15/15</h2><sub>organisers' repo scan<br>52/52 tests pass</sub></td>
+</tr>
+</table>
 
-The simulation request passes through a single supervised pipeline. Model fallback occurs within the rollout stage; output correction and physical bounds are applied before the response is returned.
-
-```mermaid
-flowchart TD
-    A[Simulation Request] --> B[Request Guard]
-    B --> C[Shock Injector]
-    C --> D[Rollout Engine]
-
-    D --> E[Speed-Limited CNN]
-    D -. CNN unavailable or step failure .-> F[Ridge Fallback]
-    F -. unavailable or failure .-> G[Persistence Fallback]
-
-    E --> H[Rain Equaliser]
-    F --> H
-    G --> H
-
-    H --> I[Physical Envelope Guards]
-    I --> J[Forecast Response]
-
-    D --> K[Climatology Pull]
-    K -. correction applied .-> I
-
-    J --> L[Forecastrophe Interface]
-```
-
-### Pipeline stages
-
-- **Request guard** - checks the initial-state shape, forecast-step count, seasonal input and perturbation shape; repairs non-finite input values where possible.
-- **Shock injector** - applies the physical perturbation to the most recent input state and clips it to the physical envelope.
-- **Rollout engine** - advances the state one day at a time. The CNN is primary, Ridge is the fallback, and persistence is the final fallback.
-- **Rain equaliser** - applies a seasonal, lead-dependent, land/sea-aware monotone quantile mapping to rainfall, with a dry-spell guard.
-- **Climatology pull** - blends forecasts toward a fitted seasonal climatology according to lead/channel weights. For shocked runs, the correction is based on the unshocked forecast so the perturbation response remains attributable to the model's dynamics.
-- **Physical envelope guards** - repairs/clips values to the configured variable bounds before returning the rollout.
+<p align="center">
+  <img src="docs/dashboard-shock.png" alt="Forecastrophe: a warm Bay of Bengal shock, day 3, difference view" width="100%">
+  <br><sub>Forecastrophe, driven live by the model: the organisers' warm-ocean shock on 15 July 2021, day 3, shocked minus normal.
+  The response stays near the Bay of Bengal, and all four causality checks pass.</sub>
+</p>
 
 ---
 
-## Model design
+## For judges: run the model and the dashboard
 
-### Residual CNN
-
-The CNN is designed to constrain how far spatial information can travel during one daily prediction step.
-
-- 4 residual blocks
-- 2 × 3×3 convolution layers per residual block
-- 96 feature channels (width)
-- 25 input channels: 18 channels from the three input days (3 × 6), 5 static channels and 2 seasonal channels
-- Residual prediction heads: a state-change head for five variables and a separate rainfall head
-- Spatial reach: up to 8 grid cells per daily step from the residual blocks
-
-The residual state head predicts scaled day-to-day changes rather than directly reconstructing the full state. Rainfall is predicted through its separate head and handled in log-normalized space during model processing.
-
-### Fallback chain
-
-The service does not depend on the CNN being available for every forecast step.
-
-| Model | Role |
-|---|---|
-| CNN | Primary learned rollout model |
-| Ridge | Fast alternative model when the CNN is unavailable, fails or the call exceeds its time budget |
-| Persistence | Last-resort fallback that repeats the most recent state |
-
-The server records which model was used for each forecast step in its diagnostics.
-
----
-
-## Evaluation
-
-The repository includes `eval/results.json`, generated by the local scoring replica. The results below are from the checked-in report, using 144 evaluation windows. They are not an official organiser score.
-
-### Forecast metrics
-
-| Metric | CNN + rain equaliser |
-|---|---:|
-| Evaluation windows | 144 |
-| Invalid forecast windows | 0 |
-| Mean forecast skill | 0.1132 |
-| Mean rainfall CSI skill | 0.1002 |
-| Forecast points (replica) | 43.30 / 45 |
-| RMSE component | 28.30 / 30 |
-| CSI component | 15.00 / 15 |
-| Day-8 anti-blur component | 10.00 / 10 |
-| Day-4 skill vs persistence | +0.2718 |
-| Day 4 beats persistence | Yes |
-| Total automatic replica score | 67.05 / 70 |
-
-<sub>The 70-point total is the local replica's automatic component (forecast + anti-blur + causality), not the overall competition score. The local evaluator's assumptions are documented in `eval/local_score.py`.</sub>
-
-### Day-8 variance ratios
-
-The mean forecast-to-observation variance ratios by channel in the checked-in evaluation report:
-
-| Channel | Ratio |
-|---|---:|
-| t2m | 0.998 |
-| tp | 0.614 |
-| u10 | 0.782 |
-| v10 | 0.782 |
-| msl | 0.924 |
-| tcwv | 0.903 |
-
-These values are included as a variance-preservation check rather than as standalone accuracy measures.
-
-### Inference latency
-
-| Metric | Reported value |
-|---|---:|
-| Mean inference latency | 36.5 ms |
-| Maximum inference latency | 49.2 ms |
-
-Latency values are from the checked-in local evaluation report and depend on the evaluation environment.
-
-### Shock-response and causality checks
-
-The evaluator checks whether responses are non-zero, localized, stable, non-teleporting and propagate over time. The checked-in report shows:
-
-| Check | Warm-ocean shock | Monsoon-stall shock |
-|---|---:|---:|
-| Non-zero response | 100% | 100% |
-| Localized | 100% | 100% |
-| Propagates (pass rate) | 95.8% | 37.5% |
-| Stable | 100% | 100% |
-| No teleporting | 100% | 100% |
-| Day-1 response energy within local neighbourhood | 96.9% | 98.9% |
-
-<sub>Propagation is a harder check than immediate locality: the monsoon-stall shock's propagation pass rate is 37.5% in this report. These results are reported as-is rather than treating all causality gates as passed.</sub>
-
-The 90%-response-energy radius (in grid cells from the shock region) also grows over forecast lead in the evaluation report, rather than showing a uniformly instantaneous global response.
-
-### Baselines
-
-The local replica compares the candidate against persistence, climatology and Ridge, in addition to the CNN without the rain equaliser. See `eval/results.json` for the full comparison. In the checked-in report, the CNN and CNN + rain equaliser rows have the same reported forecast/causality components and skill metrics; the equaliser's inclusion is part of the shipped candidate configuration, but the report does not demonstrate an improvement in those particular aggregate values over the raw CNN.
-
----
-
-## Shock experiments
-
-Perturbations are expressed in physical units and applied to the last input day before rollout. The API accepts a perturbation array with the same six-channel grid structure as one weather state.
-
-The test suite includes shock scenarios such as:
-
-- Regional temperature increase
-- Wind reduction
-- Moisture increase
-- Noise perturbations
-- Whole-grid temperature changes
-- Pressure reductions
-
-The evaluation also tests the organiser-style warm-ocean and monsoon-stall shocks.
-
----
-
-## Forecastrophe
-
-Forecastrophe is the browser-based interface for exploring the model's rollouts and shock responses.
-
-- Live forecasts served by the backend
-- Starting-weather presets spanning monsoon onset, active monsoon, heavy rain, heat, cyclone scenarios and winter
-- Baseline and shocked forecast comparison
-- Forecast timeline and day-by-day inspection
-- Map-based weather visualization, including 3D map layers and wind visualization
-- Difference/impact views, including state-level rainfall change and heat-risk summaries
-- Model-step diagnostics and fallback indicators
-- Export and presentation-oriented controls
-
-The interface is built with vanilla JavaScript and locally vendored libraries. It does not require a Node build pipeline. It is configured for live mode by default; the mock engine is retained for interface development.
-
----
-
-## Run the inference server
-
-### 1. Install inference dependencies
+**1. Set up (once).** Python 3.11 or newer.
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/Bhoomified/CodeBlooded.git
+cd CodeBlooded
+python3 -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install -r requirements.txt      # numpy, torch, fastapi, uvicorn
 ```
 
-### 2. Start the server
+<sub>Linux without a GPU: `pip install torch --index-url https://download.pytorch.org/whl/cpu` first avoids a multi-GB download.
+No data download is needed: the trained weights, normalisation, static maps and climatology are in `server/bundle/`,
+and every request carries its own three input days.</sub>
+
+**2. Start the model (terminal 1).**
 
 ```bash
 python serve.py --port 8000
 ```
 
-The service binds to `0.0.0.0` and exposes the organiser contract endpoints:
+Wait for `Model ready: speed-limited-cnn-w96-b4-v3 [cnn]`. The API is the organisers' contract:
+`POST /health` and `POST /simulate` on port 8000.
 
-- `POST /health` — readiness and model name (`GET` is also supported)
-- `POST /simulate` — forecast rollout
-
-The model is loaded and warmed up before `/health` reports ready.
-
----
-
-## Run Forecastrophe with the live model
-
-### 1. Generate starting-weather presets
-
-Place the dataset and statistics file in `data/` (see Data below), then run:
+**3. Open the dashboard (terminal 2).**
 
 ```bash
-python tools/make_presets.py --data data/india_climate_train.nc
+cd CodeBlooded/dashboard      # a new terminal, in the folder you cloned into
+python3 -m http.server 8080
 ```
 
-### 2. Start the backend
+Open **http://localhost:8080/** in a browser. The header shows the live model name in green, and a forecast for a
+real monsoon day appears within a few seconds.
 
-```bash
-python serve.py --port 8000
-```
+**4. Try a what-if in 30 seconds.**
 
-### 3. Start the frontend
+1. *Shock Painter → Shock Presets → Warm Bay of Bengal*, then **Run Simulation**.
+2. Switch the branch to **Difference** and drag the timeline: the warm patch spreads day by day, never jumping.
+3. Open the **Battery** tab → **Run Suite**: six physics tests run against the live model (null shock identical, locality, linearity, symmetry).
 
-In another terminal:
-
-```bash
-cd dashboard
-python -m http.server 8080
-```
-
-Open http://localhost:8080.
-
----
-
-## Training and verification
-
-Training and evaluation dependencies are separate from inference dependencies.
+**5. Optional: the organisers' own checks.**
 
 ```bash
 pip install -r requirements-dev.txt
+python -m monsoon_r1.schema_validator http://localhost:8000      # RESULT: all checks passed
+python -c "from monsoon_r1.repo_scan import scan; import json; print(json.dumps(scan('.'), indent=1))"   # points: 15.0
 ```
 
-Training notebooks are provided for Kaggle GPU and local CPU workflows:
+---
 
-- `kaggle/train_on_kaggle.ipynb`
-- `kaggle/train_local_cpu.ipynb`
+## Architecture
 
-The training pipeline is implemented in `train/pipeline.py`. Its documented data split is:
+![System architecture](docs/architecture.svg)
 
-| Split | Years |
+| Stage | What it does | Why it matters for the score |
+|---|---|---|
+| **1 · Guard** | Checks shapes, step count and season input; repairs non-finite values; rejects bad requests with 422 | No crashed or invalid call |
+| **2 · Shock** | Adds the perturbation to the last input day and clips it to physical limits | Shocks stay physical |
+| **3 · Rollout** | Speed-limited residual CNN, one day at a time; ridge, then persistence, take over if a step fails or the call nears its time budget | Every call returns a valid forecast in time |
+| **4 · Climatology pull** | At longer leads the forecast leans towards the seasonal average, with strength per lead and channel fitted on 2019 and computed from the day-of-year angle | +2.2 forecast points on held-out years |
+| **5 · Physics** | Clips every day to the physical envelope; rain is never negative | Validity gate always passes |
+
+**The speed limit.** Every 3×3 convolution reaches one neighbouring cell. Four residual blocks of two convolutions
+therefore reach at most 8 cells (about 900 km) per simulated day. A shock physically cannot teleport: the
+warm-ocean response radius grows steadily from 1.3 to 7.2 cells over ten days.
+
+**A shock's effect is the model's own.** For a shocked call, the climatology correction is computed from the
+unshocked run, so shocked minus normal is exactly what the network produces. A zero shock returns an identical forecast.
+
+---
+
+## What we built differently
+
+| Known problem in learned weather emulators | Our answer |
 |---|---|
-| Training | 2005–2018 |
-| Validation / tuning | 2019 |
-| Held-out evaluation | 2020–2021 |
+| Responses appear instantly far from a perturbation | Receptive field capped at 8 cells per day by design |
+| Forecasts blur into a smooth average after a few days | Trained on its own 1 → 4 → 8-day rollouts; day-8 detail stays at 61–100% of reality |
+| Rain is skewed, and heavy events get smoothed away | Separate rain head in log space, 3× weight on cells over 10 mm/day |
+| One model failure breaks the service | Three-level fallback chain plus a time budget on every call |
+| Model chosen by training loss, not by what is scored | Checkpoint picked by the grader's own formula on 2019, with EMA weights |
+| Long-range forecasts worse than the seasonal average | Lead-dependent pull towards day-of-year climatology harmonics |
 
-The pipeline trains the normalization, Ridge fallback, CNN and rain-equaliser components and produces the model bundle.
+---
 
-### Verification commands
+## Results
+
+Held-out years 2020–21, never used for training or tuning: 144 forecast windows, scored with the organisers' own
+`scoring.py` through [`eval/local_score.py`](eval/local_score.py). Full report: [`eval/results.json`](eval/results.json).
+
+| Model | Total / 70 | Forecast / 45 | RMSE skill / 30 | Heavy-rain CSI / 15 | Anti-blur / 10 | Causality / 15 |
+|---|---:|---:|---:|---:|---:|---:|
+| Climatology | 10.00 | 0.00 | 0.00 | 0.00 | 10.00 | 0.00 |
+| Persistence | 19.58 | 0.00 | 0.00 | 0.00 | 8.33 | 11.25 |
+| Ridge (our fallback) | 20.31 | 0.00 | 0.00 | 0.00 | 9.06 | 11.25 |
+| **Multiverse of Monsoon** | **67.05** | **43.30** | **28.30** | **15.00** | **10.00** | **13.75** |
+
+Mean skill against the better of persistence and climatology is **+0.113** (full RMSE points at +0.12).
+Heavy-rain CSI skill is **+0.100** (full points at +0.10).
+
+**Causality**, with the organisers' `causality_checks` (pass rate over test windows):
+
+| Check | Warm Bay of Bengal (+3 K, +15% moisture) | Weaker Arabian Sea wind (−40%) |
+|---|---:|---:|
+| Localized on day 1 | 100% | 100% |
+| No teleport | 100% | 100% |
+| Stable (under 5 std) | 100% | 100% |
+| Propagates outward | 96% | 38% |
+| Null shock identical | yes | yes |
+
+**Under grader conditions** ([`eval/ops_checks.py`](eval/ops_checks.py): no network, read-only copy of the repo):
+ready in about 2 s, 0.13 s per 10-day call (about 0.3 s with a shock), 4 parallel calls OK, 563 MB peak memory,
+repo unchanged after running, organisers' repo scan 15/15.
+
+---
+
+## Forecastrophe dashboard
+
+<p align="center">
+  <img src="docs/dashboard-forecast.png" alt="Forecastrophe: rain forecast, active monsoon, day 3" width="100%">
+  <br><sub>Rain forecast for day 3 from 15 July 2021: the west coast and north-east monsoon belts, straight from the model.</sub>
+</p>
+
+An offline browser app with no build step and every library vendored, driven live by the model:
+
+- **Seven real starting days** from the held-out years: active monsoon, onset, heavy rain, heatwave, two cyclones, winter
+- **Shock painter**: the organisers' exact preset shocks, or any box, variable and size
+- **Prime, shocked and difference views** on a 2D or 3D map, with wind streamlines from the model
+- **Live causality checks** with the kit's own rules, response radius by day, and state-level impact
+- **Physics battery**: null determinism, locality, linearity and symmetry tests against the live server
+- Export to PNG, JSON and CSV
+
+---
+
+## Tech stack
+
+![Tech stack](docs/tech-stack.svg)
+
+---
+
+## Reproduce the model
 
 ```bash
-python tools/check_bundle.py
-python eval/local_score.py --data data/india_climate_train.nc --out eval/results.json
-pytest
+pip install -r requirements-dev.txt
+# kit data (not committed): put india_climate_train.nc and stats.json in data/
+python tools/check_bundle.py                                                            # bundle complete, model loads
+pytest                                                                                  # 52 tests
+python eval/local_score.py --data data/india_climate_train.nc --out eval/results.json   # the results table above
 ```
 
-`eval/ops_checks.py` contains the operational/grader-conditions check intended to run in a network-isolated namespace against a read-only repository copy. It exercises readiness, the kit schema validator, real 10-step calls, concurrency, memory, repository immutability and repository scanning. This README does not claim a fresh run of that script from the uploaded snapshot.
+The shipped model is trained by [`kaggle/train_v3_on_kaggle.ipynb`](kaggle/train_v3_on_kaggle.ipynb) on a Kaggle T4:
+about 16 minutes of training, then held-out scoring and the climatology-pull fit. The base pipeline is
+[`train/pipeline.py`](train/pipeline.py).
 
----
-
-## API contract
-
-### Input
-
-| Field | Description |
-|---|---|
-| `init_states` | Three days of input state, shape `[3, 6, 32, 36]` |
-| `doy_sincos` | Seasonal angle representation: `[sin, cos]` |
-| `steps` | Forecast length, 1–30 |
-| `perturbation` | Optional physical perturbation, shape `[6, 32, 36]`, or `null` |
-
-The service accepts JSON nested lists and also tolerates a Base64 encoded float32 array with an accompanying shape.
-
-### Output
-
-| Field | Description |
-|---|---|
-| `rollout` | Forecast array, shape `[steps, 6, 32, 36]` |
-| `inference_ms` | Inference duration reported by the server |
-| `diagnostics` | Step-by-step model/fallback and service diagnostics |
-
-### Channel order and units
-
-| Index | Channel | Units |
+| Split | Years | Used for |
 |---|---|---|
-| 0 | t2m | K |
-| 1 | tp | mm/day |
-| 2 | u10 | m/s |
-| 3 | v10 | m/s |
-| 4 | msl | Pa |
-| 5 | tcwv | kg/m² |
-
-### Output envelope
-
-The core clips output to its configured physical envelope:
-
-| Channel | Lower bound | Upper bound |
-|---|---:|---:|
-| t2m | 234 K | 332 K |
-| tp | 0 mm/day | 800 mm/day |
-| u10 | -60 m/s | 60 m/s |
-| v10 | -60 m/s | 60 m/s |
-| msl | 85,000 Pa | 110,000 Pa |
-| tcwv | 0 kg/m² | 120 kg/m² |
+| Train | 2005–2018 | Weights, normalisation, climatology |
+| Validation | 2019 | Checkpoint choice, climatology-pull strengths |
+| Test | 2020–2021 | Every number in this README |
 
 ---
 
-## Tests
+## API (organisers' contract)
 
-`tests/test_edge_cases.py` covers:
+| Endpoint | Request | Response |
+|---|---|---|
+| `POST /health` (GET also works) | none | `{"status": "ready", "model_name": ...}` |
+| `POST /simulate` | `init_states [3, 6, 32, 36]`, `doy_sincos [sin, cos]` of the last input day, `steps` 1–30, `perturbation [6, 32, 36]` or `null` | `{"rollout": [steps, 6, 32, 36], "inference_ms", "diagnostics"}` |
 
-- Output shape and numerical validity across multiple forecast lengths
-- Invalid step counts and input-shape rejection
-- Seasonal input validation
-- Non-finite input repair and perturbation sanitization
-- Deterministic repeat calls and null-shock equivalence
-- Thread-count tolerance
-- Shock response behavior and extreme shock validity
-- Fallbacks when CNN, Ridge or equaliser files are missing/corrupt
-- Fallback when a CNN step fails or becomes non-finite
-- Slow inference budget behavior
-- Health endpoint and HTTP input validation
-- List and Base64 input equivalence
-- Response-size limits
-
-The test module requires the dataset and statistics file; if they are absent, the module skips at import time. Shock-quality checks are marked separately in the test suite.
+Nested JSON lists are canonical; base64 float32 is also accepted. Channels and units: t2m (K), tp (mm/day),
+u10 (m/s), v10 (m/s), msl (Pa), tcwv (kg/m²).
 
 ---
 
-## Project structure
+## Repository map
 
-```text
-CodeBlooded/
-├── serve.py
-├── server/
-│   ├── core.py
-│   └── bundle/
-│       ├── cnn.pt
-│       ├── ridge.npz
-│       ├── qm.json
-│       ├── meta.json
-│       ├── static.npy
-│       ├── clim_harmonics.npy
-│       └── clim_pull.npy
-├── train/
-│   └── pipeline.py
-├── eval/
-│   ├── local_score.py
-│   ├── ops_checks.py
-│   ├── lo_up.py
-│   ├── results.json
-│   └── train_log_v2.txt
-├── tests/
-│   └── test_edge_cases.py
-├── tools/
-│   ├── check_bundle.py
-│   ├── make_presets.py
-│   ├── set_equaliser.py
-│   └── scenarios.json
-├── kaggle/
-│   ├── train_on_kaggle.ipynb
-│   └── train_local_cpu.ipynb
-├── dashboard/
-│   ├── index.html
-│   ├── config.json
-│   ├── js/
-│   ├── css/
-│   ├── assets/
-│   ├── presets/
-│   ├── tests.html
-│   ├── mock/
-│   └── vendor/          # vendored libraries
-├── requirements.txt
-└── requirements-dev.txt
-```
+| Path | Contents |
+|---|---|
+| `serve.py` | API server (FastAPI) on the organisers' contract |
+| `server/core.py` | Model, fallbacks, climatology pull, physical guards: the only module `serve.py` imports |
+| `server/bundle/` | Trained model files (plain git, 4.3 MB) |
+| `train/pipeline.py` | Training pipeline |
+| `eval/` | Grader replica, grader-conditions check, results |
+| `tests/` | 52 tests: contract, validity, determinism, shocks, fallbacks |
+| `tools/` | Bundle checker, preset builder, equaliser switch |
+| `kaggle/` | Training notebooks (`train_v3_on_kaggle.ipynb` produced the shipped model) |
+| `dashboard/` | Forecastrophe front end |
+| `docs/` | Brief, architecture and tech-stack diagrams, screenshots |
 
 ---
 
-## Data
+## Limits we know about
 
-The training and evaluation data are not committed to the repository.
-
-Place the organiser dataset and its statistics file in `data/`:
-
-- `india_climate_train.nc`
-- `stats.json`
-
-Dataset release: `yug-monsoon-kit v1.0.0`
-
-The `data/` directory is ignored by Git. Use the provided data release and do not commit the dataset.
+- Daily rain beyond about day 4 is close to the seasonal average: storms are smaller than one 1° cell, and the inputs have no upper-air fields.
+- The weaker-monsoon-wind shock spreads outward clearly in only 38% of test windows.
+- The organisers score windows after 2023; our numbers are on 2020–21, the latest years in the kit.
 
 ---
 
-## Team
+<div align="center">
 
-- Bhoomi - Repository and Integration
-- Vaishnavi - Model Training and Review
-- Joel - Dashboard
-- Aditya - Testing
+**Team CodeBlooded**
 
----
+Bhoomi · repository and integration &nbsp;|&nbsp; Vaishnavi · model training and review &nbsp;|&nbsp; Joel · dashboard &nbsp;|&nbsp; Aditya · testing
 
-## Credits
+</div>
 
-The API contract, scoring functions and validator are from the organisers' kit (MIT). The design draws on Rasp & Thuerey (2021), Keisler (2022), Choudhury et al. (BharatBench, 2024) and Hakim & Masanam (2024).
-
+**Credits.** Data: modified ERA5 reanalysis (Hersbach et al. 2020, CC BY 4.0) via WeatherBench 2, from the organisers' kit.
+API contract, scoring functions and validator: organisers' kit (MIT). Design informed by Rasp & Thuerey (2021),
+Keisler (2022), Choudhury et al. (BharatBench, 2024) and Hakim & Masanam (2024).
 All model, server, training and dashboard code is written by the team.
