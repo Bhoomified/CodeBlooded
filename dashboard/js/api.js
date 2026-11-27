@@ -56,8 +56,16 @@ export async function initApi(store, config) {
         }
       }
 
-      if (!res.ok) throw new Error(`Health returned ${res.status}`);
-      const data = await res.json();
+      // 503 while serve.py warms up is normal: it answers {"status": "loading"}. Treat it as loading, not offline.
+      let data;
+      if (res.status === 503) {
+        data = await res.json().catch(() => ({}));
+        data.status = 'loading';
+      } else if (!res.ok) {
+        throw new Error(`Health returned ${res.status}`);
+      } else {
+        data = await res.json();
+      }
 
       const status = data.status || 'unknown';
       if (status === 'loading') {
@@ -90,7 +98,8 @@ export async function initApi(store, config) {
         healthMethod,
       });
       store.emit('health:update', store.get('health'));
-      healthTimer = setTimeout(checkHealth, HEALTH_POLL_READY_MS);
+      // Server not reachable yet (still starting, or not started): keep checking every 1.5 s
+      healthTimer = setTimeout(checkHealth, 1500);
     }
   }
 

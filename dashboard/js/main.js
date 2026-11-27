@@ -8,10 +8,11 @@ import { loadConfig } from './config-loader.js';
 import { createStore } from './state.js';
 import { initApi } from './api.js';
 import { computeDoySinCos, formatDoy, dayOfYearToMonthDay } from './doy.js';
-import { CHANNELS, channelByKey, DERIVED_CHANNELS, NULL_SHOCK_EPSILON, DIFFERENCE_RANGES } from './constants.js';
+import { GRID, CHANNELS, channelByKey, DERIVED_CHANNELS, NULL_SHOCK_EPSILON, DIFFERENCE_RANGES } from './constants.js';
 import { initMap, updateGridDisplay, setShockBox, setBoundaries, resetView, toggleSatellite } from './map3d.js';
 import { initWeatherEffects, updateWeatherState, toggleWindOverlay, toggleWeatherFx, setWeatherShockBox, setWeatherBoundaries } from './weather-effects.js';
 import { initWind, setWindData, toggleWind } from './wind.js';
+import { initRipple, setRippleData, setRippleDay, setRippleVisible, toggleRipple, getRippleSummary } from './ripple.js';
 import { buildLandMask, buildStateAssignments, flatIndexStep } from './grid.js';
 import { loadShockPresets, snapToGrid, buildPerturbationTensor, generateRandomJudgeShock, checkEdgeBandOverlap } from './shock.js';
 import { computeDifference, analyzeCausality, kitCausalityChecks } from './analysis.js';
@@ -84,6 +85,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     streamCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:var(--z-canvas);';
     windCanvas.parentNode.insertBefore(streamCanvas, windCanvas);
     initWind(streamCanvas, mapInstance);
+
+    // Shock ripple: the model's measured response reach per day, drawn above the weather layers
+    const rippleCanvas = windCanvas.cloneNode(false);
+    rippleCanvas.removeAttribute('id');
+    rippleCanvas.setAttribute('aria-hidden', 'true');
+    rippleCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:var(--z-canvas);';
+    windCanvas.parentNode.appendChild(rippleCanvas);
+    initRipple(rippleCanvas, mapInstance);
     toggleWind(store.get('windEnabled'));
 
     // Load boundaries & land mask
@@ -180,12 +189,17 @@ function setupHealthListener() {
     if (h.status === 'ready') {
       label.textContent = `${h.modelName || 'Ready'}`;
       document.getElementById('btn-run').disabled = false;
+      // First time the model is ready and nothing is on the map yet: run the forecast automatically
+      if (!store.get('normalRollout') && !store.get('autoRunDone') && store.get('initStates')) {
+        store.set('autoRunDone', true);
+        document.getElementById('btn-run').click();
+      }
     } else if (h.status === 'loading') {
       const elapsedSec = Math.round(h.elapsedLoading / 1000);
-      label.textContent = `Loading (${elapsedSec}s/120s): ${h.reason || 'warming up'}`;
+      label.textContent = `Model warming up (${elapsedSec}s)…`;
       document.getElementById('btn-run').disabled = true;
     } else {
-      label.textContent = `Offline: ${h.reason || 'check connection'}`;
+      label.textContent = 'Waiting for the model: run python serve.py --port 8000';
       document.getElementById('btn-run').disabled = true;
     }
   });
@@ -238,6 +252,15 @@ function setupUIEvents() {
       store.set('viewMode', e.target.value);
       updateDisplay();
     });
+  });
+
+  // Ripple overlay toggle
+  document.getElementById('toggle-ripple')?.addEventListener('change', (e) => toggleRipple(e.target.checked));
+
+  // Click-to-shock: the next map click drops the current shock there and runs both futures
+  document.getElementById('toggle-click-shock')?.addEventListener('change', (e) => {
+    store.set('clickShock', e.target.checked);
+    if (mapInstance) mapInstance.getCanvas().style.cursor = e.target.checked ? 'crosshair' : '';
   });
 
   // 2D/3D flat toggle
@@ -623,6 +646,7 @@ async function handleRunSimulation() {
 
     // Store rollouts
     store.set('normalRollout', normal.rollout);
+    store.set('autoRunDone', true);
     store.set('shockedRollout', shocked.rollout);
     const diff = computeDifference(normal.rollout, shocked.rollout, steps);
     store.set('difference', diff);
@@ -673,10 +697,25 @@ async function handleRunSimulation() {
       renderImpacts(impacts);
     }
 
+    // Ripple: measured from the model's shocked-minus-normal field (kit causality maths)
+    setRippleData({
+      differenceBuffer: diff,
+      steps,
+      shockBox: shock?.box || null,
+      channelStds: store.get('channelStds')
+    });
+
     // Set timeline range
     const timelineSlider = document.getElementById('slider-timeline');
     timelineSlider.max = steps - 1;
     setForecastDay(0);
+
+    // After a click-to-shock run: show the difference and play the ripple day by day
+    if (store.get('autoRipple')) {
+      store.set('autoRipple', false);
+      document.querySelector('input[name="view-mode"][value="difference"]').click();
+      if (!isPlaying) togglePlayback();
+    }
 
     progressEl.textContent = 'Complete';
     setTimeout(() => { progressEl.textContent = ''; }, 3000);
@@ -775,6 +814,10 @@ function updateDisplay() {
     isDiff = true;
   }
 
+  setRippleVisible(mode === 'difference');
+  setRippleDay(step);
+  renderRippleReach(step);
+
   if (buffer) {
     updateGridDisplay({
       buffer,
@@ -821,7 +864,49 @@ function handleCellHover(cell, point) {
   `;
 }
 
+/** Radius tab: how far the shock's response reached each day (same numbers the map ripple draws). */
+function renderRippleReach(step) {
+  const strip = document.getElementById('ripple-reach');
+  const text = document.getElementById('ripple-reach-text');
+  if (!strip || !text) return;
+  const sum = getRippleSummary();
+  if (!sum || !sum.radii.length || sum.radii.every((r) => r === 0)) {
+    strip.innerHTML = '';
+    text.textContent = 'Run a shock to see how far it travels each day.';
+    return;
+  }
+  const max = Math.max(1, ...sum.radii);
+  const s = Math.min(step, sum.radii.length - 1);
+  strip.innerHTML = sum.radii.map((r, i) => {
+    const cls = i === s ? 'reach-strip__bar--now' : (i < s ? 'reach-strip__bar--past' : '');
+    return `<div class="reach-strip__col" title="Day ${i}: ${r.toFixed(1)} cells"><div class="reach-strip__bar ${cls}" style="height:${Math.max(3, (r / max) * 100)}%"></div><div class="reach-strip__lbl">${i}</div></div>`;
+  }).join('');
+  text.textContent = `Day ${s}: reached ${sum.radii[s].toFixed(1)} cells (≈${Math.round(sum.radii[s] * 111)} km) beyond the box · limit ${sum.limits[s]}`;
+}
+
+function placeShockAt(cell) {
+  // Keep the size, variable and magnitude already set in the Shock Painter; default 12 x 12 cells
+  const get = (id) => parseFloat(document.getElementById(id).value);
+  let h = get('input-lat-max') - get('input-lat-min');
+  let w = get('input-lon-max') - get('input-lon-min');
+  if (!(h > 0 && h <= 20)) h = 12;
+  if (!(w > 0 && w <= 20)) w = 12;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const latMin = clamp(Math.round(cell.lat - h / 2), GRID.LAT_MIN - 0.5, GRID.LAT_MAX + 0.5 - h);
+  const lonMin = clamp(Math.round(cell.lon - w / 2), GRID.LON_MIN - 0.5, GRID.LON_MAX + 0.5 - w);
+  document.getElementById('input-lat-min').value = latMin;
+  document.getElementById('input-lat-max').value = latMin + h;
+  document.getElementById('input-lon-min').value = lonMin;
+  document.getElementById('input-lon-max').value = lonMin + w;
+  if (!Number.isFinite(get('input-shock-mag')) || get('input-shock-mag') === 0) document.getElementById('input-shock-mag').value = 3;
+  handleCustomShockInput();
+  if (isPlaying) togglePlayback();
+  store.set('autoRipple', true);
+  document.getElementById('btn-run').click();
+}
+
 function handleCellPinned(cell) {
+  if (store.get('clickShock')) { placeShockAt(cell); return; }
   const norm = store.get('normalRollout');
   const shock = store.get('shockedRollout');
   const steps = store.get('steps');

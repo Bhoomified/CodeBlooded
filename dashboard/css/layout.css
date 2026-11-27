@@ -306,3 +306,19 @@ body.fullscreen-map #bottom-bar {
 .presentation #right-inspector {
   display: none;
 }
+
+/* --------------------------------------------------------------------------
+   Alignment fixes: rail panels keep their height (the rail scrolls instead of
+   squeezing them), inspector tabs sit in a tidy 4 + 3 grid, shock-reach strip
+   -------------------------------------------------------------------------- */
+#left-rail > * { flex-shrink: 0; }
+#right-inspector .tab-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+#right-inspector .tab-bar__tab { padding: 7px 4px; letter-spacing: 0.06em; text-align: center; }
+.reach-strip { display: flex; align-items: flex-end; gap: 4px; height: 74px; padding: 8px 6px 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.reach-strip__col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+.reach-strip__bar { border-radius: 3px 3px 0 0; background: rgba(255, 255, 255, 0.10); transition: height 0.45s ease, background 0.3s; min-height: 2px; }
+.reach-strip__bar--past { background: rgba(255, 122, 47, 0.55); }
+.reach-strip__bar--now { background: #ff7a2f; box-shadow: 0 0 10px rgba(255, 122, 47, 0.7); }
+.reach-strip__lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); text-align: center; margin-top: 3px; }
+
+#ripple-reach-text { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }

@@ -1,10 +1,10 @@
 <div align="center">
 
-# Multiverse of Monsoon
+# Forecastrophe
 
 ### A CPU digital twin of India's daily weather that answers *"what if?"*
 
-**Team CodeBlooded · Yugaantar DevForge 2026 · Track 2**
+**Team CodeBlooded · Yugaantar DevForge 2026 · Track 2: Multiverse of Monsoon**
 
 [**Read the brief (PDF)**](docs/brief.pdf) &nbsp;·&nbsp;
 [Run it](#for-judges-run-the-model-and-the-dashboard) &nbsp;·&nbsp;
@@ -42,8 +42,8 @@ where you put it, then spreads outward at a physically bounded speed. It never j
 **1. Set up (once).** Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/Bhoomified/CodeBlooded.git
-cd CodeBlooded
+git clone https://github.com/Bhoomified/Forecastrophe.git
+cd Forecastrophe
 python3 -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt      # numpy, torch, fastapi, uvicorn
@@ -65,7 +65,7 @@ Wait for `Model ready: speed-limited-cnn-w96-b4-v3 [cnn]`. The API is the organi
 **3. Open the dashboard (terminal 2).**
 
 ```bash
-cd CodeBlooded/dashboard      # a new terminal, in the folder you cloned into
+cd Forecastrophe/dashboard      # a new terminal, in the folder you cloned into
 python3 -m http.server 8080
 ```
 
@@ -132,7 +132,7 @@ Held-out years 2020–21, never used for training or tuning: 144 forecast window
 | Climatology | 10.00 | 0.00 | 0.00 | 0.00 | 10.00 | 0.00 |
 | Persistence | 19.58 | 0.00 | 0.00 | 0.00 | 8.33 | 11.25 |
 | Ridge (our fallback) | 20.31 | 0.00 | 0.00 | 0.00 | 9.06 | 11.25 |
-| **Multiverse of Monsoon** | **67.05** | **43.30** | **28.30** | **15.00** | **10.00** | **13.75** |
+| **Forecastrophe** | **67.05** | **43.30** | **28.30** | **15.00** | **10.00** | **13.75** |
 
 Mean skill against the better of persistence and climatology is **+0.113** (full RMSE points at +0.12).
 Heavy-rain CSI skill is **+0.100** (full points at +0.10).

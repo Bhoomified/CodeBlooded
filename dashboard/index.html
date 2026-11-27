@@ -230,6 +230,8 @@
           <label class="ctrl-label">LAYERS</label>
           <div style="display:flex;gap:6px;align-items:center;">
             <label class="pill-toggle"><input type="checkbox" id="toggle-satellite"><span>Satellite</span></label>
+            <label class="pill-toggle" title="Draw how far the model's shock response reaches each day, next to the speed limit"><input type="checkbox" id="toggle-ripple" checked><span>Ripple</span></label>
+            <label class="pill-toggle" title="Click the map to drop the shock there and run both futures"><input type="checkbox" id="toggle-click-shock"><span>Click to shock</span></label>
             <label class="pill-toggle"><input type="checkbox" id="toggle-weather-fx" checked><span>Weather FX</span></label>
             <label class="pill-toggle"><input type="checkbox" id="toggle-flat" checked><span>2D Flat</span></label>
             <label class="pill-toggle"><input type="checkbox" id="toggle-wind" checked><span>Wind</span></label>
@@ -262,6 +264,9 @@
         <div class="text-label" style="margin-bottom:8px;">Causality Compliance (Track 2)</div>
         <div id="causality-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>
         
+        <div class="text-label" style="margin-bottom:6px;">Shock Reach by Day</div>
+        <div id="ripple-reach-text" class="text-mono" style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">Run a shock to see how far it travels each day.</div>
+        <div id="ripple-reach" class="reach-strip" style="margin-bottom:14px;"></div>
         <div class="text-label" style="margin-bottom:6px;">Response Radius r90 by Day</div>
         <div id="radius-chart-container" style="background:var(--surface);border-radius:var(--radius-sm);padding:8px 4px;border:1px solid var(--border);"></div>
         
